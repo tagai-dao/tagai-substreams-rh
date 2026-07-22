@@ -1,0 +1,17 @@
+# substreams auth file
+.substreams.env
+
+# Compiled source files
+target/
+build/
+
+# Local development state
+.DS_Store
+data/
+bin/
+
+# Sink data when running any sinker
+sink-data/
+
+# The spkg packed by the subtreams cli
+*.spkg

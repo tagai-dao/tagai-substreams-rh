@@ -1,0 +1,12 @@
+"""Temporary migration entity used to validate RH Substreams -> Graph Node."""
+type PumpTokenDiscovery @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes!
+  creator: Bytes!
+  creatorHex: String!
+  symbol: String!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  transaction: String!
+  logIndex: Int!
+}

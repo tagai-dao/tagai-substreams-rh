@@ -1,0 +1,6 @@
+[
+  {"anonymous":false,"inputs":[{"indexed":true,"name":"subject","type":"address"},{"indexed":true,"name":"amount","type":"uint256"},{"indexed":false,"name":"createFee","type":"uint256"}],"name":"CreateIPshare","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"name":"trader","type":"address"},{"indexed":true,"name":"subject","type":"address"},{"indexed":false,"name":"isBuy","type":"bool"},{"indexed":false,"name":"shareAmount","type":"uint256"},{"indexed":false,"name":"ethAmount","type":"uint256"},{"indexed":false,"name":"protocolEthAmount","type":"uint256"},{"indexed":false,"name":"subjectEthAmount","type":"uint256"},{"indexed":false,"name":"supply","type":"uint256"}],"name":"Trade","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"name":"subject","type":"address"},{"indexed":true,"name":"investor","type":"address"},{"indexed":true,"name":"amount","type":"uint256"}],"name":"ValueCaptured","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"name":"staker","type":"address"},{"indexed":true,"name":"subject","type":"address"},{"indexed":false,"name":"isStake","type":"bool"},{"indexed":true,"name":"amount","type":"uint256"},{"indexed":false,"name":"stakedAmount","type":"uint256"}],"name":"Stake","type":"event"}
+]

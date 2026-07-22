@@ -1,0 +1,9 @@
+[
+  {"type":"event","name":"FundsReceived","inputs":[{"name":"sender","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"AuctionCreated","inputs":[{"name":"auctionId","type":"uint256","indexed":true},{"name":"creator","type":"address","indexed":true},{"name":"ethAmount","type":"uint256","indexed":false},{"name":"spotQuote","type":"uint256","indexed":false},{"name":"initialBid","type":"uint256","indexed":false},{"name":"endTime","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BidPlaced","inputs":[{"name":"auctionId","type":"uint256","indexed":true},{"name":"bidder","type":"address","indexed":true},{"name":"totalBid","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"AuctionSettled","inputs":[{"name":"auctionId","type":"uint256","indexed":true},{"name":"winner","type":"address","indexed":true},{"name":"ethAmount","type":"uint256","indexed":false},{"name":"bidTokenBurned","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BidTokensDeposited","inputs":[{"name":"bidder","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BidTokensWithdrawn","inputs":[{"name":"bidder","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"EthClaimed","inputs":[{"name":"winner","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false}
+]

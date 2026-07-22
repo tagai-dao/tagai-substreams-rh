@@ -1,0 +1,1 @@
+[{"anonymous":false,"inputs":[{"indexed":true,"name":"poolId","type":"bytes32"},{"indexed":true,"name":"token","type":"address"},{"indexed":false,"name":"platformFee","type":"uint256"},{"indexed":false,"name":"deployerFee","type":"uint256"}],"name":"SwapFeeCollected","type":"event"}]

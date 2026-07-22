@@ -1,0 +1,7 @@
+[
+  {"type":"event","name":"BasketCreated","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"creator","type":"address","indexed":true},{"name":"version","type":"uint32","indexed":true},{"name":"salt","type":"bytes32","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BasketBought","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"basketOut","type":"uint256","indexed":false},{"name":"usdgIn","type":"uint256","indexed":false},{"name":"feeWeth","type":"uint256","indexed":false},{"name":"frontend","type":"address","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BasketSold","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"basketIn","type":"uint256","indexed":false},{"name":"usdgOut","type":"uint256","indexed":false},{"name":"feeWeth","type":"uint256","indexed":false},{"name":"frontend","type":"address","indexed":false}],"anonymous":false},
+  {"type":"event","name":"SellLegParked","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"asset","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"PendingBurnSwept","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false}
+]

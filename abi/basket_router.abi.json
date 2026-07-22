@@ -1,0 +1,5 @@
+[
+  {"type":"event","name":"BasketBought","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"payer","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"usdgIn","type":"uint256","indexed":false},{"name":"basketOut","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BasketSold","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"payer","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"basketIn","type":"uint256","indexed":false},{"name":"usdgOut","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"BasketCreatedAndBought","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"creator","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"userSalt","type":"bytes32","indexed":false},{"name":"usdgIn","type":"uint256","indexed":false},{"name":"basketOut","type":"uint256","indexed":false}],"anonymous":false}
+]

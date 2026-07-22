@@ -1,0 +1,861 @@
+{
+  "generator": "evm-events-calls",
+  "state": {
+    "name": "tiptag_substreams",
+    "chainName": "robinhood",
+    "substreamsSinkChoice": "postgres",
+    "contracts": [
+      {
+        "name": "pump",
+        "trackEvents": true,
+        "trackCalls": false,
+        "rawAbi": [
+          {
+            "type": "constructor",
+            "inputs": [
+              {
+                "name": "_ipshare",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "_feeReceiver",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "receive",
+            "stateMutability": "payable"
+          },
+          {
+            "type": "function",
+            "name": "acceptOwnership",
+            "inputs": [],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminChangeCreateFee",
+            "inputs": [
+              {
+                "name": "_createFee",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminChangeFeeAddress",
+            "inputs": [
+              {
+                "name": "_feeReceiver",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminChangeFeeRatio",
+            "inputs": [
+              {
+                "name": "ratios",
+                "type": "uint256[2]",
+                "internalType": "uint256[2]"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminChangeIPShare",
+            "inputs": [
+              {
+                "name": "_ipshare",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminSetCalculator",
+            "inputs": [
+              {
+                "name": "_calculator",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminSetHookAddress",
+            "inputs": [
+              {
+                "name": "_hookAddress",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminSetNutbox",
+            "inputs": [
+              {
+                "name": "communityFactory_",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "calculator_",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "socialCurationFactory_",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "committee_",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminSetPoolManager",
+            "inputs": [
+              {
+                "name": "_poolManager",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "adminSetVault",
+            "inputs": [
+              {
+                "name": "_vault",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "createFee",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "createToken",
+            "inputs": [
+              {
+                "name": "tick",
+                "type": "string",
+                "internalType": "string"
+              },
+              {
+                "name": "salt",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "payable"
+          },
+          {
+            "type": "function",
+            "name": "createdTicks",
+            "inputs": [
+              {
+                "name": "",
+                "type": "string",
+                "internalType": "string"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "bool",
+                "internalType": "bool"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "createdTokens",
+            "inputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "bool",
+                "internalType": "bool"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getBuyAmountByValue",
+            "inputs": [
+              {
+                "name": "bondingCurveSupply",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "ethAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "pure"
+          },
+          {
+            "type": "function",
+            "name": "getBuyPriceAfterFee",
+            "inputs": [
+              {
+                "name": "supply",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getCalculator",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getFeeRatio",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256[2]",
+                "internalType": "uint256[2]"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getFeeReceiver",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getHookAddress",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getIPShare",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getPoolManager",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getPrice",
+            "inputs": [
+              {
+                "name": "supply",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "pure"
+          },
+          {
+            "type": "function",
+            "name": "getSellPrice",
+            "inputs": [
+              {
+                "name": "supply",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "pure"
+          },
+          {
+            "type": "function",
+            "name": "getSellPriceAfterFee",
+            "inputs": [
+              {
+                "name": "supply",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "getVault",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "hourlyTickCalculator",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "nutboxCommittee",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "nutboxCommunityFactory",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "owner",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "pendingOwner",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "predictTokenAddress",
+            "inputs": [
+              {
+                "name": "deployer",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "salt",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              }
+            ],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "renounceOwnership",
+            "inputs": [],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "function",
+            "name": "socialCurationFactory",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "tokenImplementation",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "totalTokens",
+            "inputs": [],
+            "outputs": [
+              {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ],
+            "stateMutability": "view"
+          },
+          {
+            "type": "function",
+            "name": "transferOwnership",
+            "inputs": [
+              {
+                "name": "newOwner",
+                "type": "address",
+                "internalType": "address"
+              }
+            ],
+            "outputs": [],
+            "stateMutability": "nonpayable"
+          },
+          {
+            "type": "event",
+            "name": "CreateFeeChanged",
+            "inputs": [
+              {
+                "name": "oldFee",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+              },
+              {
+                "name": "newFee",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "FeeAddressChanged",
+            "inputs": [
+              {
+                "name": "oldAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "newAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "FeeRatiosChanged",
+            "inputs": [
+              {
+                "name": "donutFee",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+              },
+              {
+                "name": "sellsmanFee",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "IPShareChanged",
+            "inputs": [
+              {
+                "name": "oldIPShare",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "newIPShare",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "NewToken",
+            "inputs": [
+              {
+                "name": "tick",
+                "type": "string",
+                "indexed": false,
+                "internalType": "string"
+              },
+              {
+                "name": "token",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "creator",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "NutboxAllocationParked",
+            "inputs": [
+              {
+                "name": "token",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "hook",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "amount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "NutboxLinked",
+            "inputs": [
+              {
+                "name": "token",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "community",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "socialPool",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "OwnershipTransferStarted",
+            "inputs": [
+              {
+                "name": "previousOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "event",
+            "name": "OwnershipTransferred",
+            "inputs": [
+              {
+                "name": "previousOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              },
+              {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+              }
+            ],
+            "anonymous": false
+          },
+          {
+            "type": "error",
+            "name": "CantBeZeroAddress",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "CantSetSocialDistributionMoreThanTotalSupply",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "InsufficientCreateFee",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "NutboxNotConfigured",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "PreMineTokenFail",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "RefundFail",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "SaltNotAvailable",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "TickHasBeenCreated",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "TokenNotCreated",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "TokenNotListed",
+            "inputs": []
+          },
+          {
+            "type": "error",
+            "name": "TooMuchFee",
+            "inputs": []
+          }
+        ],
+        "address": "0x6c75e165e52e9c1661a75041650be2d919ee02a1",
+        "initialBlock": 6819860,
+        "trackFactory": false,
+        "factoryCreationEvent": "6ef445b4f64f1dfc164e9ccda7d848e2e7c539d81e0bef875ca5d89508c514be",
+        "factoryCreationEventFieldIdx": 1
+      }
+    ],
+    "dynamic_contracts": [],
+    "confirm_enough_contracts": true
+  }
+}

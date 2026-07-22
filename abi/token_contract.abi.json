@@ -1,0 +1,36 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "buyer", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "sellsman", "type": "address"},
+      {"indexed": false, "internalType": "bool", "name": "isBuy", "type": "bool"},
+      {"indexed": false, "internalType": "uint256", "name": "tokenAmount", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "ethAmount", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "tiptagFee", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "sellsmanFee", "type": "uint256"}
+    ],
+    "name": "Trade",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "from", "type": "address"},
+      {"indexed": true, "internalType": "address", "name": "to", "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}
+    ],
+    "name": "Transfer",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "address", "name": "token", "type": "address"},
+      {"indexed": true, "internalType": "bytes32", "name": "poolId", "type": "bytes32"},
+      {"indexed": false, "internalType": "uint160", "name": "sqrtPriceX96", "type": "uint160"}
+    ],
+    "name": "TokenListedToDex",
+    "type": "event"
+  }
+]

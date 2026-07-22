@@ -1,0 +1,18 @@
+specVersion: 1.0.0
+description: TipTag Robinhood Chain Substreams migration proof-of-concept
+repository: https://github.com/donut33-social/tiptag-substreams
+# Compatibility adapter only. Graph Node v0.42.0+ removed Substreams support;
+# run this manifest only on a pinned v0.41.2 node during the transition.
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: substreams
+    name: tiptag_substreams
+    network: robinhood
+    source:
+      package:
+        moduleName: graph_out
+        file: ./tiptag-substreams-v0.1.0.spkg
+    mapping:
+      kind: substreams/graph-entities
+      apiVersion: 0.0.7

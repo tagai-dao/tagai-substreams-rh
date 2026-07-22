@@ -1,0 +1,8 @@
+[
+  {"type":"event","name":"FeeAccrued","inputs":[{"name":"holderAmount","type":"uint256","indexed":false},{"name":"auctionAmount","type":"uint256","indexed":false},{"name":"creatorAmount","type":"uint256","indexed":false},{"name":"launcherAmount","type":"uint256","indexed":false},{"name":"frontend","type":"address","indexed":true},{"name":"frontendAmount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"HolderFeesClaimed","inputs":[{"name":"holder","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"CreatorFeesClaimed","inputs":[{"name":"recipient","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"LauncherFeesClaimed","inputs":[{"name":"recipient","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"FrontendFeesClaimed","inputs":[{"name":"frontend","type":"address","indexed":true},{"name":"amount","type":"uint256","indexed":false}],"anonymous":false},
+  {"type":"event","name":"RedeemedInKind","inputs":[{"name":"holder","type":"address","indexed":true},{"name":"recipient","type":"address","indexed":true},{"name":"sharesBurned","type":"uint256","indexed":false}],"anonymous":false}
+]

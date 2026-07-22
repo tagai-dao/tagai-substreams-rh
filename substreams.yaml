@@ -1,0 +1,352 @@
+specVersion: v0.1.0
+package:
+  name: tiptag_substreams
+  version: v0.1.0
+  url: https://github.com/donut33-social/tiptag-substreams
+  description: TipTag protocol indexer for Robinhood Chain Mainnet
+
+imports:
+    ethcommon: https://spkg.io/streamingfast/ethereum-common-v0.3.3.spkg
+
+protobuf:
+  files:
+    - contract.proto
+    - sf/substreams/sink/entity/v1/entity.proto
+    - sf/substreams/sink/database/v1/database.proto
+    - sf/substreams/sink/sql/v1/service.proto
+  importPaths:
+    - ./proto
+  excludePaths:
+    - google
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+
+  - name: map_walnut_factory_events
+    kind: map
+    initialBlock: 6922897
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0x24328dcca1ba54eee82e2993f021802e64290486 || evt_addr:0x7df32f7a177bcfe437a040579e3bea89dc99c023 || evt_addr:0x4ca57c64dfe1cf1be977093c75f9d9cdd1dd2e10 || evt_addr:0xddbaba530728b5b8939d7fddc334432490916e90"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.WalnutEvents
+
+  - name: store_walnut_contracts
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_walnut_factory_events
+
+  - name: map_walnut_events
+    kind: map
+    initialBlock: 6922897
+    # Dynamic addresses cannot be known by the static block index, but their
+    # event signatures can. This prevents scanning full receipts in blocks
+    # that cannot contain a Walnut template event.
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0xd9ddc9dcfa963ac8b810758254dfcbdd868ce81331581e7cfe5686f80cc0ed20 || evt_sig:0xb5ea2431f5202daeb0439a80df086a35ec0abfd105e20f5564a824062596c09e || evt_sig:0x5b904beeb70c84b12d4105e0582a752c5a2705717790e1a648a27ba8622b9786 || evt_sig:0x5d777218f34a12264a9fec685df1868059eeec6d632b17a1775a00089e57533a || evt_sig:0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0 || evt_sig:0x2f4ae87a584f00dc35b043dd1c5ac839c1f41cd3a66e834d4e13faa6251634e6 || evt_sig:0x86a5cc8fe9af9ae68fb50f62885307a7755a30cbd290131644377f0bd94a7181 || evt_sig:0x6ef8cf0d66677b36d11ee4e51dbd733fcd95070b8c2eb524fb96952f26115cb2 || evt_sig:0x8752a472e571a816aea92eec8dae9baf628e840f4929fbcc2d155e6233ff68a7 || evt_sig:0xd1c19fbcd4551a5edfb66d43d2e337c04837afda3482b42bdf569a8fccdae5fb || evt_sig:0x9f1ec8c880f76798e7b793325d625e9b60e4082a553c98f42b6cda368dd60008 || evt_sig:0x0f0bc5b519ddefdd8e5f9e6423433aa2b869738de2ae34d58ebc796fc749fa0d || evt_sig:0x4896181ff8f4543cc00db9fe9b6fb7e6f032b7eb772c72ab1ec1b4d2e03b9369 || evt_sig:0xecd166d84cc70df22f629978f82e6662e5b2f4de982e131bb6c0a08bbf56a6bc"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_walnut_factory_events
+      - store: store_walnut_contracts
+        mode: get
+    output:
+      type: proto:contract.v1.WalnutEvents
+
+  - name: store_walnut_indexes
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - map: map_walnut_factory_events
+      - map: map_walnut_events
+
+  - name: store_walnut_owners
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_walnut_factory_events
+      - map: map_walnut_events
+
+  - name: store_walnut_memberships
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set_if_not_exists
+    valueType: int64
+    inputs:
+      - map: map_walnut_factory_events
+      - map: map_walnut_events
+
+  - name: store_pre_walnut_accounts
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set_if_not_exists
+    valueType: string
+    inputs:
+      - map: map_ipshare_events
+      - map: map_events
+      - map: map_swap_events
+
+  - name: store_token_accounts
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set_if_not_exists
+    valueType: string
+    inputs:
+      - map: map_token_events
+      - store: store_pre_walnut_accounts
+        mode: get
+      - store: store_walnut_accounts
+        mode: get
+
+  - name: store_user_account_indexes
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - store: store_pre_walnut_accounts
+        mode: deltas
+      - store: store_token_accounts
+        mode: deltas
+
+  - name: store_walnut_accounts
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set_if_not_exists
+    valueType: string
+    inputs:
+      - map: map_walnut_factory_events
+      - map: map_walnut_events
+      - store: store_pre_walnut_accounts
+        mode: get
+
+  - name: store_walnut_account_indexes
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - store: store_walnut_accounts
+        mode: deltas
+
+  - name: map_ipshare_events
+    kind: map
+    initialBlock: 6922897
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x8a7b0d80fa92699ce3e5bb2c8fe404d6733796d1
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.IPShareEvents
+
+  - name: store_ipshare_indexes
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - map: map_ipshare_events
+
+  - name: store_ipshare_holder_balances
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_ipshare_events
+
+  - name: store_ipshare_stake_balances
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_ipshare_events
+
+  - name: map_events
+    kind: map
+    initialBlock: 6922897
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x6c75e165e52e9c1661a75041650be2d919ee02a1
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.Events
+
+  # Basket protocol was first deployed on RH at block 15,239,871. Keeping the
+  # dedicated initial block prevents a new Basket module from replaying the
+  # older TipTag history.
+  - name: map_basket_registry_events
+    kind: map
+    initialBlock: 15239871
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x121561caaffcc1f489f8f60e7f7529fd8c1c394b
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.BasketRegistryEvents
+
+  - name: store_basket_addresses
+    kind: store
+    initialBlock: 15239871
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_basket_registry_events
+
+  - name: map_basket_events
+    kind: map
+    initialBlock: 15239871
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0xd765db6344eec99147c9b1eb4458aea3e5f02a88 || evt_addr:0x013f02c21cedf1c846044b30cabe289ef4dafd18 || evt_addr:0x17896d2f09b220a7c1a59473708320b8028dc318 || evt_addr:0x68882a77e8a3d0ca043bd26e4105eb86baa01b4a || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_basket_registry_events
+      - store: store_basket_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.BasketEvents
+
+  # Migration proof-of-concept consumed by Graph Node. This initially exposes
+  # Pump token discovery; the remaining legacy entities are added in later
+  # migration slices.
+  - name: graph_out
+    kind: map
+    initialBlock: 6922897
+    inputs:
+      - map: map_events
+    output:
+      type: proto:sf.substreams.sink.entity.v1.EntityChanges
+
+  - name: store_token_addresses
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_events
+
+  - name: map_token_events
+    kind: map
+    initialBlock: 6922897
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        # Transfer is intentionally excluded. Holder balances are refreshed
+        # from RH Blockscout for both TagAI tokens and Basket tokens.
+        string: "evt_sig:0x9adcf0ad0cda63c4d50f26a48925cf6405df27d422a39c456b5f03f661c82982 || evt_sig:0x74beebcb41508a3651f8ab8f6ee9318bcf2e721ec973e146d4a943360de308e8"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_events
+      - store: store_token_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.TokenEvents
+
+  - name: map_swap_events
+    kind: map
+    initialBlock: 6922897
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x5e8e2d77ce0d2e04ba058bbcecc13c7c8adb20cc
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.TokenEvents
+
+  - name: store_bonding_curve_supply
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_token_events
+
+  - name: store_entity_indexes
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - map: map_events
+      - map: map_token_events
+      - map: map_swap_events
+
+  # PostgreSQL production path. The first migration slice writes Pump token
+  # discoveries; subsequent slices extend this output with mutable protocol
+  # state and immutable event-history tables.
+  - name: db_out
+    kind: map
+    initialBlock: 6922897
+    inputs:
+      - map: map_events
+      - map: map_token_events
+      - map: map_swap_events
+      - map: map_ipshare_events
+      - map: map_walnut_factory_events
+      - map: map_walnut_events
+      - map: map_basket_registry_events
+      - map: map_basket_events
+      - store: store_bonding_curve_supply
+        mode: get
+      - store: store_entity_indexes
+        mode: get
+      - store: store_ipshare_indexes
+        mode: get
+      - store: store_ipshare_holder_balances
+        mode: deltas
+      - store: store_ipshare_stake_balances
+        mode: deltas
+      - store: store_walnut_indexes
+        mode: get
+      - store: store_walnut_contracts
+        mode: get
+      - store: store_walnut_owners
+        mode: get
+      - store: store_walnut_memberships
+        mode: deltas
+      - store: store_pre_walnut_accounts
+        mode: deltas
+      - store: store_token_accounts
+        mode: deltas
+      - store: store_walnut_accounts
+        mode: deltas
+      - store: store_user_account_indexes
+        mode: get
+      - store: store_walnut_account_indexes
+        mode: get
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+network: robinhood
+
+sink:
+  module: db_out
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    engine: postgres
+    schema: schema.sql

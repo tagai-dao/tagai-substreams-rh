@@ -1,0 +1,3 @@
+[
+  {"type":"event","name":"BasketRegistered","inputs":[{"name":"basket","type":"address","indexed":true},{"name":"creator","type":"address","indexed":true},{"name":"registrar","type":"address","indexed":true},{"name":"version","type":"uint32","indexed":false},{"name":"createdAt","type":"uint64","indexed":false}],"anonymous":false}
+]
