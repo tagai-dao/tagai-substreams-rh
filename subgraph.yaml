@@ -12,7 +12,7 @@ dataSources:
     source:
       package:
         moduleName: graph_out
-        file: ./tiptag-substreams-v0.1.0.spkg
+        file: ./tiptag-substreams-v0.2.0.spkg
     mapping:
       kind: substreams/graph-entities
       apiVersion: 0.0.7

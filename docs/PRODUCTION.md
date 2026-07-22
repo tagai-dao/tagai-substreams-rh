@@ -12,21 +12,17 @@ Git.
 
 Copy these files to `/opt/tiptag-substreams`:
 
-- `tiptag-substreams-v0.1.0.spkg`
+- `tiptag-substreams-v0.2.0.spkg`
 - `bin/substreams-sink-sql` (`v4.13.1`)
 - `scripts/run-sink.sh`
 
-The accepted package has these identities:
-
-```text
-db_out module hash: 222e31011168479b86f8891161b6448fb0261147
-SPKG SHA-256:       39bccf8ac075b3d49bd7dce6d3b09928420399d6f89f6aad4484c38fc8b332eb
-```
-
-Verify the package before starting a production backfill:
+Record and verify the exact package identities before starting a production
+backfill. Do not copy hashes from a previous deployment because Rust/Substreams
+toolchain changes can alter the package even when the source is unchanged:
 
 ```bash
-sha256sum /opt/tiptag-substreams/tiptag-substreams-v0.1.0.spkg
+sha256sum /opt/tiptag-substreams/tiptag-substreams-v0.2.0.spkg
+substreams info /opt/tiptag-substreams/tiptag-substreams-v0.2.0.spkg
 ```
 
 ## 2. Create and initialize PostgreSQL
@@ -36,11 +32,14 @@ Create a dedicated database and user, then let the SQL sink install the schema:
 ```bash
 /opt/tiptag-substreams/bin/substreams-sink-sql setup \
   "$DATABASE_URL" \
-  /opt/tiptag-substreams/tiptag-substreams-v0.1.0.spkg
+  /opt/tiptag-substreams/tiptag-substreams-v0.2.0.spkg
 ```
 
 Do not point a new package with a different `db_out` module hash at an existing
 cursor unless its schema and state compatibility have been explicitly proven.
+`MODULE_HASH_MISMATCH_POLICY` defaults to `error`. A reviewed migration may set
+it to `ignore` only while advancing the existing cursor to the new module hash;
+restore `error` immediately afterward.
 
 ## 3. Configure authentication and systemd
 

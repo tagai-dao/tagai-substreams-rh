@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.1.0
+  version: v0.2.0
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer for Robinhood Chain Mainnet
 
@@ -192,12 +192,13 @@ modules:
     output:
       type: proto:contract.v1.Events
 
-  # Basket protocol was first deployed on RH at block 15,239,871. Keeping the
-  # dedicated initial block prevents a new Basket module from replaying the
-  # older TipTag history.
+  # Basket indexing starts at the replacement deployment at block 16,303,863.
+  # The Registry and FeeAuction are shared with the retired deployment, so this
+  # boundary is what prevents legacy Basket registrations from entering the
+  # dynamic address store.
   - name: map_basket_registry_events
     kind: map
-    initialBlock: 15239871
+    initialBlock: 16303863
     blockFilter:
       module: ethcommon:index_events
       query:
@@ -209,7 +210,7 @@ modules:
 
   - name: store_basket_addresses
     kind: store
-    initialBlock: 15239871
+    initialBlock: 16303863
     updatePolicy: set
     valueType: int64
     inputs:
@@ -217,11 +218,11 @@ modules:
 
   - name: map_basket_events
     kind: map
-    initialBlock: 15239871
+    initialBlock: 16303863
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: "evt_addr:0xd765db6344eec99147c9b1eb4458aea3e5f02a88 || evt_addr:0x013f02c21cedf1c846044b30cabe289ef4dafd18 || evt_addr:0x17896d2f09b220a7c1a59473708320b8028dc318 || evt_addr:0x68882a77e8a3d0ca043bd26e4105eb86baa01b4a || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
+        string: "evt_addr:0x7c5f5c4358dad036cbbdde6569cbb9cec5b86a88 || evt_addr:0xe07514fc71bcb16e6c045c937524099ae029d39b || evt_addr:0x17896d2f09b220a7c1a59473708320b8028dc318 || evt_addr:0xd3f321e93645db6a9e4948ca1198d5bf7d811108 || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
     inputs:
       - source: sf.ethereum.type.v2.Block
       - map: map_basket_registry_events

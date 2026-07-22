@@ -25,12 +25,12 @@ token; `substreams auth` stores it in the local Substreams credential store.
 docker compose up -d postgres
 ./bin/substreams-sink-sql setup \
   'postgres://dev:insecure@127.0.0.1:5432/tiptag_dev?sslmode=disable' \
-  ./tiptag-substreams-v0.1.0.spkg
+  ./tiptag-substreams-v0.2.0.spkg
 
 . ./.substreams.env
 ./bin/substreams-sink-sql run \
   'postgres://dev:insecure@127.0.0.1:5432/tiptag_dev?sslmode=disable' \
-  ./tiptag-substreams-v0.1.0.spkg 6922897: \
+  ./tiptag-substreams-v0.2.0.spkg --start-block 6922897 \
   -e robinhood.substreams.pinax.network:443
 ```
 
@@ -45,7 +45,7 @@ contracts automatic while avoiding WASM execution on blocks that cannot contain
 a relevant event.
 
 For production, run the same sink command under a process supervisor with a
-server PostgreSQL DSN and omit the stop block (`6922897:`). The SQL sink stores
+server PostgreSQL DSN and omit `--stop-block`. The SQL sink stores
 its cursor in PostgreSQL, resumes automatically, and applies undo signals when
 streaming non-final blocks. Use `--final-blocks-only` if lower latency is not
 required and you prefer never to ingest reversible blocks.
@@ -69,11 +69,10 @@ psql "$DATABASE_URL" -f ./scripts/reconcile-fixed-15217318.sql
 The project-local SQL sink binary is ignored by Git. The tested version is
 `substreams-sink-sql v4.13.1` from StreamingFast's official release.
 
-The acceptance package currently has SQL output-module hash
-`222e31011168479b86f8891161b6448fb0261147` and file SHA-256
-`39bccf8ac075b3d49bd7dce6d3b09928420399d6f89f6aad4484c38fc8b332eb`.
-Record both values with a production deployment so an accidental package
-change cannot silently reuse an incompatible PostgreSQL cursor.
+Record the built package's `db_out` module hash and file SHA-256 with every
+production deployment. Both identities change when the WASM toolchain or
+module configuration changes, so an old value must not be reused as a release
+expectation.
 
 For local acceptance, `scripts/test-reorg.sql` validates the PostgreSQL I/U/D
 rollback model inside a transaction; it leaves the target database unchanged.
@@ -122,9 +121,10 @@ This module gets you only events that matched.
 
 ### `map_token_events`
 
-Decodes `Trade`, `Transfer`, and `TokenListedToDex` from Token addresses learned
-from Pump `NewToken` events, including events emitted later in the creation
-transaction.
+Decodes `Trade` and `TokenListedToDex` from Token addresses learned from Pump
+`NewToken` events, including events emitted later in the creation transaction.
+ERC20 `Transfer` is intentionally excluded; holder snapshots are refreshed by
+the separate Blockscout path.
 
 ### `db_out`
 

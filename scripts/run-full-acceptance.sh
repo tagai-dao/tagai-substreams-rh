@@ -5,7 +5,7 @@ project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_dir"
 
 endpoint="${SUBSTREAMS_ENDPOINT:-robinhood.substreams.pinax.network:443}"
-package="${SUBSTREAMS_PACKAGE:-./tiptag-substreams-v0.1.0.spkg}"
+package="${SUBSTREAMS_PACKAGE:-./tiptag-substreams-v0.2.0.spkg}"
 database_url="${DATABASE_URL:-postgres://dev:insecure@127.0.0.1:5432/tiptag_final_v5?sslmode=disable}"
 noop_database_url="${NOOP_DATABASE_URL:-postgres://dev:insecure@127.0.0.1:5432/tiptag_noop_v2?sslmode=disable}"
 postgres_container="${POSTGRES_CONTAINER:-postgres-substreams}"

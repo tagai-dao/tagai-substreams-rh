@@ -168,7 +168,7 @@ CREATE INDEX IF NOT EXISTS token_holder_refresh_state_lease_idx
     ON token_holder_refresh_state (lease_until)
     WHERE lease_until IS NOT NULL;
 
--- Basket protocol (RH chain, deployed from block 15,239,871). Constituent
+-- Replacement Basket protocol (RH chain, indexed from block 16,303,863). Constituent
 -- composition and live reserves remain chain-read data and are intentionally
 -- not duplicated here.
 CREATE TABLE IF NOT EXISTS baskets (

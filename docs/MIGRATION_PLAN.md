@@ -199,9 +199,9 @@ that no TipTag event changed the captured baseline across that interval.
 
 ### Recorded acceptance evidence
 
-- Final acceptance package identity: `db_out`
-  `222e31011168479b86f8891161b6448fb0261147`; package SHA-256
-  `39bccf8ac075b3d49bd7dce6d3b09928420399d6f89f6aad4484c38fc8b332eb`.
+- Record the final `db_out` module hash and package SHA-256 for each deployed
+  artifact. Package identities from earlier Basket deployments are retired and
+  must not be used to validate a replacement release.
 
 - The sink resumed from PostgreSQL cursor `#6922897`, then committed the next
   event block `#7032580` atomically.
