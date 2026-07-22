@@ -9,6 +9,8 @@ ENDPOINT="${SUBSTREAMS_ENDPOINT:-robinhood.substreams.pinax.network:443}"
 START_BLOCK="${START_BLOCK:-6922897}"
 STOP_BLOCK="${STOP_BLOCK:-}"
 MODULE_HASH_MISMATCH_POLICY="${MODULE_HASH_MISMATCH_POLICY:-error}"
+CURSORS_TABLE="${CURSORS_TABLE:-cursors}"
+HISTORY_TABLE="${HISTORY_TABLE:-substreams_history}"
 
 if [[ -f "${PROJECT_DIR}/.substreams.env" ]]; then
   # shellcheck disable=SC1091
@@ -23,6 +25,8 @@ args=(
   --endpoint "${ENDPOINT}"
   --max-retries -1
   --on-module-hash-mismatch "${MODULE_HASH_MISMATCH_POLICY}"
+  --cursors-table "${CURSORS_TABLE}"
+  --history-table "${HISTORY_TABLE}"
 )
 
 if [[ -n "${STOP_BLOCK}" ]]; then

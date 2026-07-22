@@ -73,10 +73,13 @@ sudo systemctl enable tiptag-substreams tiptag-basket-substreams
 ```
 
 The legacy continuation resumes the existing cursor and has range `6922897:`.
-The Basket-only range is `16303863:`. Both stop blocks remain empty. Each output
-module owns a separate PostgreSQL cursor. Use the mismatch policy `ignore` only
-for the reviewed one-time legacy cursor migration, then restore `error` before
-normal operation.
+The Basket-only range is `16303863:`. Both stop blocks remain empty. The Basket
+service must use `CURSORS_TABLE=basket_cursors` and
+`HISTORY_TABLE=basket_substreams_history`; sharing the legacy system tables
+would copy a cursor below Basket's module initial block. Use the mismatch policy
+`ignore` only for the reviewed one-time legacy cursor migration, then restore
+`error` before normal operation. A fresh Basket system table starts directly at
+its module initial block with strict mismatch handling.
 
 ## 4. Monitor the backfill
 
