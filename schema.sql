@@ -173,21 +173,34 @@ CREATE INDEX IF NOT EXISTS token_holder_refresh_state_lease_idx
 -- not duplicated here.
 CREATE TABLE IF NOT EXISTS baskets (
     id TEXT PRIMARY KEY,
-    creator TEXT NOT NULL,
-    registrar TEXT NOT NULL,
-    version INTEGER NOT NULL,
-    created_at BIGINT NOT NULL,
+    -- Trade blocks update only aggregate columns. Defaults are required on
+    -- creation fields because PostgreSQL checks the INSERT candidate before
+    -- applying ON CONFLICT to an existing Basket row.
+    creator TEXT NOT NULL DEFAULT '',
+    registrar TEXT NOT NULL DEFAULT '',
+    version INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
     salt TEXT NOT NULL DEFAULT '0x',
     buy_count BIGINT NOT NULL DEFAULT 0,
     sell_count BIGINT NOT NULL DEFAULT 0,
     total_usdg_volume NUMERIC(78, 0) NOT NULL DEFAULT 0,
     total_fee_weth NUMERIC(78, 0) NOT NULL DEFAULT 0,
-    creation_block BIGINT NOT NULL,
-    creation_block_hash TEXT NOT NULL,
-    creation_transaction_hash TEXT NOT NULL,
-    creation_log_index INTEGER NOT NULL,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_block_hash TEXT NOT NULL DEFAULT '',
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
     UNIQUE (creation_transaction_hash, creation_log_index)
 );
+-- Keep schema.sql safe for databases initialized before partial Basket
+-- aggregate upserts received their required bootstrap defaults.
+ALTER TABLE baskets ALTER COLUMN creator SET DEFAULT '';
+ALTER TABLE baskets ALTER COLUMN registrar SET DEFAULT '';
+ALTER TABLE baskets ALTER COLUMN version SET DEFAULT 0;
+ALTER TABLE baskets ALTER COLUMN created_at SET DEFAULT 0;
+ALTER TABLE baskets ALTER COLUMN creation_block SET DEFAULT 0;
+ALTER TABLE baskets ALTER COLUMN creation_block_hash SET DEFAULT '';
+ALTER TABLE baskets ALTER COLUMN creation_transaction_hash SET DEFAULT '';
+ALTER TABLE baskets ALTER COLUMN creation_log_index SET DEFAULT 0;
 CREATE INDEX IF NOT EXISTS baskets_creator_idx ON baskets (creator);
 CREATE INDEX IF NOT EXISTS baskets_creation_idx ON baskets (creation_block, creation_log_index);
 
