@@ -1,0 +1,79 @@
+specVersion: v0.1.0
+package:
+  name: tiptag_basket_substreams
+  version: v0.1.0
+  url: https://github.com/tagai-dao/tagai-substreams-rh
+  description: Replacement Basket contracts indexer for Robinhood Chain Mainnet
+
+imports:
+  ethcommon: https://spkg.io/streamingfast/ethereum-common-v0.3.3.spkg
+
+protobuf:
+  files:
+    - contract.proto
+    - sf/substreams/sink/entity/v1/entity.proto
+    - sf/substreams/sink/database/v1/database.proto
+    - sf/substreams/sink/sql/v1/service.proto
+  importPaths:
+    - ./proto
+  excludePaths:
+    - google
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+  - name: map_basket_registry_events
+    kind: map
+    initialBlock: 16303863
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x121561caaffcc1f489f8f60e7f7529fd8c1c394b
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.BasketRegistryEvents
+
+  - name: store_basket_addresses
+    kind: store
+    initialBlock: 16303863
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_basket_registry_events
+
+  - name: map_basket_events
+    kind: map
+    initialBlock: 16303863
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0x7c5f5c4358dad036cbbdde6569cbb9cec5b86a88 || evt_addr:0xe07514fc71bcb16e6c045c937524099ae029d39b || evt_addr:0x17896d2f09b220a7c1a59473708320b8028dc318 || evt_addr:0xd3f321e93645db6a9e4948ca1198d5bf7d811108 || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_basket_registry_events
+      - store: store_basket_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.BasketEvents
+
+  - name: basket_db_out
+    kind: map
+    initialBlock: 16303863
+    inputs:
+      - map: map_basket_registry_events
+      - map: map_basket_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+network: robinhood
+
+sink:
+  module: basket_db_out
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    engine: postgres
+    schema: schema.sql

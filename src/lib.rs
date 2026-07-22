@@ -1520,33 +1520,11 @@ fn field(name: &str, typed: Typed) -> Field {
     }
 }
 
-#[substreams::handlers::map]
-fn db_out(
-    events: contract::Events,
-    token_events: contract::TokenEvents,
-    swap_events: contract::TokenEvents,
-    ipshare_events: contract::IpShareEvents,
-    walnut_factory_events: contract::WalnutEvents,
-    walnut_events: contract::WalnutEvents,
+fn write_basket_changes(
+    tables: &mut Tables,
     basket_registry_events: contract::BasketRegistryEvents,
     basket_events: contract::BasketEvents,
-    bonding_curve_supply: StoreGetBigInt,
-    entity_indexes: StoreGetInt64,
-    ipshare_indexes: StoreGetInt64,
-    ipshare_holder_deltas: Deltas<DeltaBigInt>,
-    ipshare_stake_deltas: Deltas<DeltaBigInt>,
-    walnut_indexes: StoreGetInt64,
-    walnut_contracts: StoreGetString,
-    walnut_owners: StoreGetString,
-    walnut_membership_deltas: Deltas<DeltaInt64>,
-    pre_walnut_account_deltas: Deltas<DeltaString>,
-    token_account_deltas: Deltas<DeltaString>,
-    walnut_account_deltas: Deltas<DeltaString>,
-    user_account_indexes: StoreGetInt64,
-    walnut_account_indexes: StoreGetInt64,
-) -> Result<DatabaseChanges, substreams::errors::Error> {
-    let mut tables = Tables::new();
-
+) {
     for event in basket_registry_events.creations {
         let basket = prefixed_hex(&event.basket);
         tables
@@ -1767,6 +1745,45 @@ fn db_out(
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
     }
+}
+
+#[substreams::handlers::map]
+fn basket_db_out(
+    basket_registry_events: contract::BasketRegistryEvents,
+    basket_events: contract::BasketEvents,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_basket_changes(&mut tables, basket_registry_events, basket_events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn db_out(
+    events: contract::Events,
+    token_events: contract::TokenEvents,
+    swap_events: contract::TokenEvents,
+    ipshare_events: contract::IpShareEvents,
+    walnut_factory_events: contract::WalnutEvents,
+    walnut_events: contract::WalnutEvents,
+    basket_registry_events: contract::BasketRegistryEvents,
+    basket_events: contract::BasketEvents,
+    bonding_curve_supply: StoreGetBigInt,
+    entity_indexes: StoreGetInt64,
+    ipshare_indexes: StoreGetInt64,
+    ipshare_holder_deltas: Deltas<DeltaBigInt>,
+    ipshare_stake_deltas: Deltas<DeltaBigInt>,
+    walnut_indexes: StoreGetInt64,
+    walnut_contracts: StoreGetString,
+    walnut_owners: StoreGetString,
+    walnut_membership_deltas: Deltas<DeltaInt64>,
+    pre_walnut_account_deltas: Deltas<DeltaString>,
+    token_account_deltas: Deltas<DeltaString>,
+    walnut_account_deltas: Deltas<DeltaString>,
+    user_account_indexes: StoreGetInt64,
+    walnut_account_indexes: StoreGetInt64,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_basket_changes(&mut tables, basket_registry_events, basket_events);
 
     for event in events.pump_new_tokens {
         let token_id = format!("0x{}", Hex(&event.token));

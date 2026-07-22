@@ -8,10 +8,31 @@ SwapHook/PoolManager, and active Walnut factory/template mappings. It maintains
 fork-aware state stores and writes queryable current state plus immutable event
 history to PostgreSQL without an archive JSON-RPC node.
 
+Production uses two packages so a Basket contract upgrade does not invalidate
+the historical caches of the legacy protocol stream:
+
+- `substreams.yaml`: combined development package and schema reference.
+- `substreams.basket.yaml`: Basket-only production package, starting at the
+  replacement deployment block `16303863`.
+
+The legacy production service must derive a continuation SPKG from its
+already-built v0.1.0 artifact. The rewrite only makes the two legacy Basket
+block filters impossible; it preserves the original WASM and every non-Basket
+module byte-for-byte. Do not rebuild v0.1.0 from source because its module
+hashes and PostgreSQL cursor are the continuity boundary for Pump, Token,
+IPShare, Swap, and Walnut indexing.
+
+```bash
+cargo run --release --example make_legacy_continuation -- \
+  /opt/tiptag-substreams/tiptag-substreams-v0.1.0.spkg \
+  /opt/tiptag-substreams/tiptag-legacy-continuation-v0.1.0.spkg
+```
+
 ## Usage
 
 ```bash
 substreams build
+substreams build --manifest substreams.basket.yaml
 substreams auth
 substreams gui -e robinhood.substreams.pinax.network:443
 ```
@@ -73,6 +94,11 @@ Record the built package's `db_out` module hash and file SHA-256 with every
 production deployment. Both identities change when the WASM toolchain or
 module configuration changes, so an old value must not be reused as a release
 expectation.
+
+The Basket-only artifact is `tiptag-basket-substreams-v0.1.0.spkg` and its sink
+module is `basket_db_out`. Run it as a second SQL sink with
+`START_BLOCK=16303863`; it may share the existing PostgreSQL database because it
+writes only Basket and token-holder refresh tables and owns a separate cursor.
 
 For local acceptance, `scripts/test-reorg.sql` validates the PostgreSQL I/U/D
 rollback model inside a transaction; it leaves the target database unchanged.

@@ -1,0 +1,22 @@
+[Unit]
+Description=TipTag Robinhood Basket-only Substreams SQL sink
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tiptag
+Group=tiptag
+WorkingDirectory=/opt/tiptag-substreams
+EnvironmentFile=/etc/tiptag-basket-substreams.env
+EnvironmentFile=/opt/tiptag-substreams/.substreams.env
+ExecStart=/opt/tiptag-substreams/scripts/run-sink.sh
+Restart=always
+RestartSec=10
+TimeoutStopSec=90
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
