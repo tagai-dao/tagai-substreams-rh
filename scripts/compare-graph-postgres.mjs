@@ -124,7 +124,9 @@ async function fetchGraphRows(spec, prefixLimit = null) {
     const definitions = [];
     if (!immutablePrefixMode) definitions.push("$block: Int!");
     if (lastId) definitions.push("$last: Bytes!");
-    if (immutablePrefixMode) definitions.push("$prefixLimit: BigInt!");
+    if (immutablePrefixMode) {
+      definitions.push(`$prefixLimit: ${spec.prefixType || "BigInt"}!`);
+    }
     const variableDefinition =
       definitions.length > 0 ? `(${definitions.join(", ")})` : "";
     const filters = [];
@@ -149,7 +151,12 @@ async function fetchGraphRows(spec, prefixLimit = null) {
     const data = await graphRequest(query, {
       ...(!immutablePrefixMode ? { block: comparisonBlock } : {}),
       ...(lastId ? { last: lastId } : {}),
-      ...(immutablePrefixMode ? { prefixLimit } : {}),
+      ...(immutablePrefixMode
+        ? {
+            prefixLimit:
+              spec.prefixType === "Int" ? Number(prefixLimit) : prefixLimit,
+          }
+        : {}),
     });
     const page = data.rows;
     for (const row of page) rows.push(compact(spec.fromGraph(row)));
@@ -412,6 +419,7 @@ const specs = [
       tokenIndex: numberText(row.tokenIndex),
     }),
     prefixField: "tokenIndex",
+    prefixType: "Int",
     immutableFields: ["id", "token", "tokenIndex"],
     sql: `SELECT json_build_object(
       'id', lower(id),
