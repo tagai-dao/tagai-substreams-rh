@@ -1,8 +1,9 @@
 [Unit]
-Description=Run TipTag Robinhood unified incremental sink every minute
+Description=Run TipTag Robinhood unified incremental sink 10 seconds after completion
 
 [Timer]
-OnCalendar=*-*-* *:*:00
+OnBootSec=10s
+OnUnitInactiveSec=10s
 AccuracySec=1s
 RandomizedDelaySec=0
 Persistent=true
