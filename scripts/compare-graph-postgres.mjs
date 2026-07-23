@@ -26,6 +26,13 @@ const nullableNumberText = (value) =>
 const lower = (value) => text(value).toLowerCase();
 const relationId = (value) => lower(value?.id ?? value);
 const hash = (value) => lower(value).replace(/^0x/, "");
+const decodedGraphEventId = (value) => {
+  const encoded = lower(value).replace(/^0x/, "");
+  return Buffer.from(encoded, "hex")
+    .toString("utf8")
+    .toLowerCase()
+    .replace(/^0x/, "");
+};
 
 function compact(row) {
   return { ...row };
@@ -117,21 +124,21 @@ function selectFields(row, fields) {
 }
 
 async function fetchGraphRows(spec, prefixLimit = null) {
-  if (immutablePrefixMode && prefixLimit == null) return [];
+  if (immutablePrefixMode && prefixLimit == null && !spec.currentSet) return [];
   const rows = [];
   let lastId = null;
   for (;;) {
     const definitions = [];
     if (!immutablePrefixMode) definitions.push("$block: Int!");
     if (lastId) definitions.push("$last: Bytes!");
-    if (immutablePrefixMode) {
+    if (immutablePrefixMode && prefixLimit != null) {
       definitions.push(`$prefixLimit: ${spec.prefixType || "BigInt"}!`);
     }
     const variableDefinition =
       definitions.length > 0 ? `(${definitions.join(", ")})` : "";
     const filters = [];
     if (lastId) filters.push("id_gt: $last");
-    if (immutablePrefixMode) {
+    if (immutablePrefixMode && prefixLimit != null) {
       filters.push(`${spec.prefixField}_lte: $prefixLimit`);
     }
     const where =
@@ -151,7 +158,7 @@ async function fetchGraphRows(spec, prefixLimit = null) {
     const data = await graphRequest(query, {
       ...(!immutablePrefixMode ? { block: comparisonBlock } : {}),
       ...(lastId ? { last: lastId } : {}),
-      ...(immutablePrefixMode
+      ...(immutablePrefixMode && prefixLimit != null
         ? {
             prefixLimit:
               spec.prefixType === "Int" ? Number(prefixLimit) : prefixLimit,
@@ -609,12 +616,8 @@ const specs = [
       totalStaked: numberText(row.totalStaked),
       walnutOperationCount: numberText(row.walnutOperationCount),
     }),
-    prefixField: "index",
-    immutableFields: [
-      "id",
-      "joinIn",
-      "index",
-    ],
+    currentSet: true,
+    immutableFields: ["id", "joinIn"],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'joinIn', COALESCE(joined_at, 0)::text,
@@ -767,8 +770,9 @@ const specs = [
     selection: `id index type community { id } poolFactory pool { id }
       account { id } chainId asset amount timestamp tx socialOrderId
       socialHarvested`,
-    key: (row) => row.index,
+    key: (row) => row.eventId,
     fromGraph: (row) => ({
+      eventId: decodedGraphEventId(row.id),
       index: numberText(row.index),
       type: text(row.type),
       community: relationId(row.community),
@@ -786,6 +790,7 @@ const specs = [
     }),
     prefixField: "index",
     immutableFields: [
+      "eventId",
       "index",
       "type",
       "community",
@@ -801,6 +806,7 @@ const specs = [
       "socialHarvested",
     ],
     sql: `SELECT json_build_object(
+      'eventId', lower(regexp_replace(id, '^0x', '')),
       'index', entity_index::text,
       'type', operation_type,
       'community', lower(community),
@@ -861,17 +867,21 @@ const selectedSpecs = immutablePrefixMode
   ? specs.filter(
       (spec) =>
         Array.isArray(spec.immutableFields) &&
-        typeof spec.prefixField === "string",
+        (typeof spec.prefixField === "string" || spec.currentSet),
     )
   : specs;
 
 for (const spec of selectedSpecs) {
   process.stderr.write(`Comparing ${spec.name}... `);
   let postgresRows = runPostgres(spec.sql);
-  const prefixLimit = immutablePrefixMode
+  const prefixLimit = immutablePrefixMode && spec.prefixField
     ? maxPrefix(postgresRows, spec.prefixField)
     : null;
   let graphRows = await fetchGraphRows(spec, prefixLimit);
+  if (immutablePrefixMode && spec.currentSet) {
+    const postgresKeys = new Set(postgresRows.map((row) => spec.key(row)));
+    graphRows = graphRows.filter((row) => postgresKeys.has(spec.key(row)));
+  }
   if (immutablePrefixMode) {
     graphRows = graphRows.map((row) =>
       selectFields(row, spec.immutableFields),
