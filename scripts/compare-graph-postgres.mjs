@@ -3,10 +3,11 @@
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 
-const [endpoint, rawBlock, reportPath] = process.argv.slice(2);
+const [endpoint, rawBlock, reportPath, ...rawFlags] = process.argv.slice(2);
+const immutablePrefixMode = rawFlags.includes("--immutable-prefix");
 if (!endpoint || !rawBlock || !/^\d+$/.test(rawBlock)) {
   console.error(
-    "Usage: node scripts/compare-graph-postgres.mjs <graph-endpoint> <block> [report.json]",
+    "Usage: node scripts/compare-graph-postgres.mjs <graph-endpoint> <block> [report.json] [--immutable-prefix]",
   );
   process.exit(2);
 }
@@ -77,6 +78,19 @@ async function graphRequest(query, variables) {
 }
 
 async function graphMeta() {
+  if (immutablePrefixMode) {
+    const data = await graphRequest(
+      `query AuditMeta {
+        _meta {
+          block { number hash }
+          deployment
+          hasIndexingErrors
+        }
+      }`,
+      {},
+    );
+    return data._meta;
+  }
   const data = await graphRequest(
     `query AuditMeta($block: Int!) {
       _meta(block: { number: $block }) {
@@ -90,27 +104,52 @@ async function graphMeta() {
   return data._meta;
 }
 
-async function fetchGraphRows(spec) {
+function maxPrefix(rows, field) {
+  if (rows.length === 0) return null;
+  return rows.reduce((maximum, row) => {
+    const current = BigInt(row[field]);
+    return current > maximum ? current : maximum;
+  }, 0n).toString();
+}
+
+function selectFields(row, fields) {
+  return Object.fromEntries(fields.map((field) => [field, row[field]]));
+}
+
+async function fetchGraphRows(spec, prefixLimit = null) {
+  if (immutablePrefixMode && prefixLimit == null) return [];
   const rows = [];
   let lastId = null;
   for (;;) {
-    const variableDefinition = lastId
-      ? "($block: Int!, $last: Bytes!)"
-      : "($block: Int!)";
-    const where = lastId ? ", where: { id_gt: $last }" : "";
+    const definitions = [];
+    if (!immutablePrefixMode) definitions.push("$block: Int!");
+    if (lastId) definitions.push("$last: Bytes!");
+    if (immutablePrefixMode) definitions.push("$prefixLimit: BigInt!");
+    const variableDefinition =
+      definitions.length > 0 ? `(${definitions.join(", ")})` : "";
+    const filters = [];
+    if (lastId) filters.push("id_gt: $last");
+    if (immutablePrefixMode) {
+      filters.push(`${spec.prefixField}_lte: $prefixLimit`);
+    }
+    const where =
+      filters.length > 0 ? `, where: { ${filters.join(", ")} }` : "";
+    const block = immutablePrefixMode
+      ? ""
+      : ", block: { number: $block }";
     const query = `query Audit${variableDefinition} {
       rows: ${spec.root}(
         first: ${pageSize},
         orderBy: id,
-        orderDirection: asc,
-        block: { number: $block }${where}
+        orderDirection: asc${block}${where}
       ) {
         ${spec.selection}
       }
     }`;
     const data = await graphRequest(query, {
-      block: comparisonBlock,
+      ...(!immutablePrefixMode ? { block: comparisonBlock } : {}),
       ...(lastId ? { last: lastId } : {}),
+      ...(immutablePrefixMode ? { prefixLimit } : {}),
     });
     const page = data.rows;
     for (const row of page) rows.push(compact(spec.fromGraph(row)));
@@ -261,6 +300,16 @@ const specs = [
       bondingCurveSupply: numberText(row.bondingCurveSupply),
       maxBondingCurveSupply: numberText(row.maxBondingCurveSupply),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "id",
+      "index",
+      "symbol",
+      "creator",
+      "pump",
+      "version",
+      "maxBondingCurveSupply",
+    ],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'index', entity_index::text,
@@ -298,6 +347,21 @@ const specs = [
       price: numberText(row.price),
       transHash: hash(row.transHash),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "index",
+      "trader",
+      "token",
+      "isBuy",
+      "amount",
+      "ethAmount",
+      "timestamp",
+      "sellsman",
+      "sellsmanFee",
+      "tiptagFee",
+      "price",
+      "transHash",
+    ],
     sql: `SELECT json_build_object(
       'index', entity_index::text,
       'trader', lower(buyer),
@@ -326,6 +390,8 @@ const specs = [
       timestamp: numberText(row.timestamp),
       pair: lower(row.pair),
     }),
+    prefixField: "index",
+    immutableFields: ["id", "index", "token", "blockNum", "timestamp", "pair"],
     sql: `SELECT json_build_object(
       'id', lower(token),
       'index', entity_index::text,
@@ -345,6 +411,8 @@ const specs = [
       token: relationId(row.token),
       tokenIndex: numberText(row.tokenIndex),
     }),
+    prefixField: "tokenIndex",
+    immutableFields: ["id", "token", "tokenIndex"],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'token', lower(token),
@@ -394,6 +462,19 @@ const specs = [
       supply: numberText(row.supply),
       timestamp: numberText(row.timestamp),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "index",
+      "trader",
+      "subject",
+      "isBuy",
+      "shareAmount",
+      "ethAmount",
+      "protocolEthAmount",
+      "subjectEthAmount",
+      "supply",
+      "timestamp",
+    ],
     sql: `SELECT json_build_object(
       'index', entity_index::text,
       'trader', lower(trader),
@@ -419,6 +500,8 @@ const specs = [
       amount: numberText(row.amount),
       timestamp: numberText(row.timestamp),
     }),
+    prefixField: "index",
+    immutableFields: ["index", "subject", "investor", "amount", "timestamp"],
     sql: `SELECT json_build_object(
       'index', entity_index::text,
       'subject', lower(subject),
@@ -440,6 +523,15 @@ const specs = [
       shareAmount: numberText(row.shareAmount),
       time: numberText(row.time),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "index",
+      "staker",
+      "subject",
+      "isStake",
+      "shareAmount",
+      "time",
+    ],
     sql: `SELECT json_build_object(
       'index', entity_index::text,
       'staker', lower(staker),
@@ -509,6 +601,12 @@ const specs = [
       totalStaked: numberText(row.totalStaked),
       walnutOperationCount: numberText(row.walnutOperationCount),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "id",
+      "joinIn",
+      "index",
+    ],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'joinIn', COALESCE(joined_at, 0)::text,
@@ -571,6 +669,15 @@ const specs = [
       activePoolCount: numberText(row.activePoolCount),
       operationCount: numberText(row.operationCount),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "id",
+      "index",
+      "createdAt",
+      "owner",
+      "cToken",
+      "treasury",
+    ],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'index', entity_index::text,
@@ -614,6 +721,19 @@ const specs = [
       lockDuration: nullableNumberText(row.lockDuration),
       poolType: text(row.poolType),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "id",
+      "index",
+      "createdAt",
+      "name",
+      "poolFactory",
+      "community",
+      "asset",
+      "chainId",
+      "lockDuration",
+      "poolType",
+    ],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'index', entity_index::text,
@@ -656,6 +776,22 @@ const specs = [
       socialHarvested:
         row.socialHarvested == null ? null : Boolean(row.socialHarvested),
     }),
+    prefixField: "index",
+    immutableFields: [
+      "index",
+      "type",
+      "community",
+      "poolFactory",
+      "pool",
+      "account",
+      "chainId",
+      "asset",
+      "amount",
+      "timestamp",
+      "tx",
+      "socialOrderId",
+      "socialHarvested",
+    ],
     sql: `SELECT json_build_object(
       'index', entity_index::text,
       'type', operation_type,
@@ -679,7 +815,7 @@ const meta = await graphMeta();
 if (meta.hasIndexingErrors) {
   throw new Error("Graph reports hasIndexingErrors=true");
 }
-if (Number(meta.block.number) !== comparisonBlock) {
+if (!immutablePrefixMode && Number(meta.block.number) !== comparisonBlock) {
   throw new Error(
     `Graph returned block ${meta.block.number}, expected ${comparisonBlock}`,
   );
@@ -689,11 +825,20 @@ const report = {
   startedAt,
   completedAt: null,
   comparisonBlock,
+  comparisonMode: immutablePrefixMode
+    ? "immutable-prefix-at-latest-graph"
+    : "exact-block",
   graphMeta: meta,
   exclusions: [
     "TokenTransfer: intentionally not indexed by Substreams",
     "TokenHolder/token balances/holdersCount/age: refreshed from Blockscout",
     "Basket entities: outside this TagAI/Nutbox audit",
+    ...(immutablePrefixMode
+      ? [
+          "Mutable summaries, balances, counters, status and totals: Graph historical snapshots are pruned",
+          "Graph rows are capped at each frozen PostgreSQL entity's maximum monotonic index",
+        ]
+      : []),
   ],
   entities: {},
   totals: {
@@ -704,13 +849,35 @@ const report = {
   },
 };
 
-for (const spec of specs) {
+const selectedSpecs = immutablePrefixMode
+  ? specs.filter(
+      (spec) =>
+        Array.isArray(spec.immutableFields) &&
+        typeof spec.prefixField === "string",
+    )
+  : specs;
+
+for (const spec of selectedSpecs) {
   process.stderr.write(`Comparing ${spec.name}... `);
-  const [graphRows, postgresRows] = await Promise.all([
-    fetchGraphRows(spec),
-    Promise.resolve(runPostgres(spec.sql)),
-  ]);
+  let postgresRows = runPostgres(spec.sql);
+  const prefixLimit = immutablePrefixMode
+    ? maxPrefix(postgresRows, spec.prefixField)
+    : null;
+  let graphRows = await fetchGraphRows(spec, prefixLimit);
+  if (immutablePrefixMode) {
+    graphRows = graphRows.map((row) =>
+      selectFields(row, spec.immutableFields),
+    );
+    postgresRows = postgresRows.map((row) =>
+      selectFields(row, spec.immutableFields),
+    );
+  }
   const result = compareRows(spec, graphRows, postgresRows);
+  if (immutablePrefixMode) {
+    result.prefixField = spec.prefixField;
+    result.prefixLimit = prefixLimit;
+    result.comparedFields = spec.immutableFields;
+  }
   report.entities[spec.name] = result;
   report.totals.missingInPostgres += result.missingInPostgres;
   report.totals.extraInPostgres += result.extraInPostgres;
