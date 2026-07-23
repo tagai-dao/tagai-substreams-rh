@@ -127,3 +127,56 @@ SUBSTREAMS_READER_ENABLED=0
 
 and restart `tagai-api-rh`. The API immediately returns to the configured Graph
 endpoints without changing PostgreSQL data or its sink cursor.
+
+## 7. Consolidate into one production stream
+
+The long-running RH deployment should use one unified stream after the legacy
+and Basket backfills have both reached the same live block. The unified package
+is assembled from three artifacts:
+
+1. The exact legacy-continuation SPKG already running in production.
+2. The exact Basket-only SPKG already running in production.
+3. A freshly built combined template SPKG whose `db_out` knows how to write
+   both domains.
+
+Do not rebuild the legacy or Basket upstream modules for this migration. Build
+the combined template, then assemble and verify the unified artifact:
+
+```bash
+substreams build --manifest substreams.yaml
+
+cargo run --release --example make_unified_package -- \
+  /opt/tiptag-substreams/tiptag-legacy-continuation-v0.1.0.spkg \
+  /opt/tiptag-substreams/tiptag-basket-substreams-v0.1.0.spkg \
+  ./tiptag-substreams-v0.2.0.spkg \
+  ./tiptag-unified-substreams-v0.1.0.spkg
+
+./scripts/verify-unified-package.sh \
+  /opt/tiptag-substreams/tiptag-legacy-continuation-v0.1.0.spkg \
+  /opt/tiptag-substreams/tiptag-basket-substreams-v0.1.0.spkg \
+  ./tiptag-unified-substreams-v0.1.0.spkg
+```
+
+The verifier must pass before deployment. It proves that every legacy upstream
+module still has the production legacy hash and each Basket upstream module
+still has the production Basket hash. Only the combined `db_out` is new.
+
+Use dedicated `unified_cursors` and `unified_substreams_history` tables. Stop
+both existing services at a common cursor, set unified `START_BLOCK` to that
+block plus one, and start the unified service with strict module-hash handling.
+Never point the new output hash at either existing cursor table.
+
+After stopping both existing services, make the alignment check a hard gate:
+
+```bash
+docker exec -i tiptag-substreams-postgres \
+  psql -U tiptag -d tiptag_rh \
+  < ./scripts/check-unified-cutover.sql
+```
+
+If it fails, do not start the unified service. Bring only the lagging service to
+the reported leading block with a bounded run, stop it, and repeat the check.
+
+The old services remain installed but stopped until the unified stream has
+passed cursor, event-count, aggregate, and reorg checks. This makes rollback
+recoverable without deleting SQL data.
