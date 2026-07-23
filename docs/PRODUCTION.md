@@ -1,6 +1,6 @@
 # RH production deployment
 
-The production data paths are:
+The original production data paths were:
 
 - `Pinax legacy continuation -> substreams-sink-sql -> PostgreSQL`
 - `Pinax Basket-only -> substreams-sink-sql -> PostgreSQL`
@@ -180,3 +180,41 @@ the reported leading block with a bounded run, stop it, and repeat the check.
 The old services remain installed but stopped until the unified stream has
 passed cursor, event-count, aggregate, and reorg checks. This makes rollback
 recoverable without deleting SQL data.
+
+## 8. Test one-minute bounded incremental runs
+
+The incremental unit reuses the unified package, cursor, history table, and
+database. It queries the RH public RPC immediately before each run and sets the
+exclusive stop block to:
+
+```text
+eth_blockNumber - LATEST_LAG_BLOCKS + 1
+```
+
+With the default `LATEST_LAG_BLOCKS=100`, every run indexes through
+`latest - 100`. The timer schedules the next run one minute after the previous
+run exits, so runs cannot overlap.
+
+Never run the continuous and incremental unified units together. For a
+temporary test, stop the continuous unit and start (but do not enable) the
+timer:
+
+```bash
+systemctl stop tiptag-unified-substreams.service
+date --iso-8601=seconds > /root/tiptag-incremental-test-start
+systemctl start tiptag-unified-incremental.timer
+```
+
+After the test, stop the timer and allow any active oneshot run to finish.
+Aggregate the maximum processed-block counter from each session rather than
+summing every periodic stats line:
+
+```bash
+systemctl stop tiptag-unified-incremental.timer
+./scripts/sum-incremental-processed-blocks.sh \
+  "$(cat /root/tiptag-incremental-test-start)"
+```
+
+Restart the continuous unit after a temporary test. Do not enable the timer as
+a permanent replacement until its processed-block usage and data freshness
+have been accepted.

@@ -1,0 +1,13 @@
+[Unit]
+Description=Run TipTag Robinhood unified incremental sink every minute
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=1s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=tiptag-unified-incremental.service
+
+[Install]
+WantedBy=timers.target

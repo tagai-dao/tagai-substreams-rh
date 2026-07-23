@@ -11,6 +11,7 @@ STOP_BLOCK="${STOP_BLOCK:-}"
 MODULE_HASH_MISMATCH_POLICY="${MODULE_HASH_MISMATCH_POLICY:-error}"
 CURSORS_TABLE="${CURSORS_TABLE:-cursors}"
 HISTORY_TABLE="${HISTORY_TABLE:-substreams_history}"
+MAX_RETRIES="${MAX_RETRIES:--1}"
 
 if [[ -f "${PROJECT_DIR}/.substreams.env" ]]; then
   # shellcheck disable=SC1091
@@ -23,7 +24,7 @@ args=(
   "${PACKAGE_PATH}"
   --start-block "${START_BLOCK}"
   --endpoint "${ENDPOINT}"
-  --max-retries -1
+  --max-retries "${MAX_RETRIES}"
   --on-module-hash-mismatch "${MODULE_HASH_MISMATCH_POLICY}"
   --cursors-table "${CURSORS_TABLE}"
   --history-table "${HISTORY_TABLE}"

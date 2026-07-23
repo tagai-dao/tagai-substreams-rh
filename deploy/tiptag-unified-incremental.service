@@ -1,0 +1,21 @@
+[Unit]
+Description=TipTag Robinhood Unified Substreams bounded incremental sink
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=tiptag
+Group=tiptag
+WorkingDirectory=/opt/tiptag-substreams
+EnvironmentFile=/etc/tiptag-unified-substreams.env
+EnvironmentFile=/opt/tiptag-substreams/.substreams.env
+Environment=HEAD_RPC_URL=https://rpc.mainnet.chain.robinhood.com
+Environment=LATEST_LAG_BLOCKS=100
+Environment=MAX_RETRIES=3
+ExecStart=/opt/tiptag-substreams/scripts/run-incremental-sink.sh
+RuntimeMaxSec=15min
+TimeoutStopSec=90
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
