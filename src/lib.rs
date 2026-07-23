@@ -1539,11 +1539,6 @@ fn write_basket_changes(
             .set("creation_transaction_hash", event.evt_tx_hash)
             .set("creation_log_index", event.evt_index);
 
-        // Basket holders use the same Blockscout refresh worker as TagAI
-        // tokens; no Transfer or Approval events are consumed here.
-        tables
-            .upsert_row("token_holder_refresh_state", &basket)
-            .set("dirty", true);
     }
 
     for event in basket_events.trades {
@@ -1584,12 +1579,6 @@ fn write_basket_changes(
             row.set("router_log_index", event.router_evt_index);
         }
 
-        tables
-            .upsert_row("token_holder_refresh_state", &basket)
-            .set("dirty", true)
-            .max("last_trade_entity_index", event.evt_ordinal as i64)
-            .max("last_trade_block", event.evt_block_number)
-            .max("last_trade_timestamp", timestamp);
     }
 
     for event in basket_events.operations {
@@ -1831,11 +1820,6 @@ fn db_out(
             .upsert_row("pump_summary", "pump")
             .add("token_counts", 1);
 
-        // A newly discovered token must enter the four-hour fallback schedule
-        // even when it has not emitted its first Trade yet.
-        tables
-            .upsert_row("token_holder_refresh_state", &token_id)
-            .set("dirty", true);
     }
 
     for event in token_events.trades {
@@ -1884,12 +1868,6 @@ fn db_out(
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
 
-        tables
-            .upsert_row("token_holder_refresh_state", &token)
-            .set("dirty", true)
-            .max("last_trade_entity_index", trade_index)
-            .max("last_trade_block", event.evt_block_number)
-            .max("last_trade_timestamp", timestamp);
     }
 
     for event in swap_events.swap_trades {
@@ -1926,12 +1904,6 @@ fn db_out(
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
 
-        tables
-            .upsert_row("token_holder_refresh_state", &token)
-            .set("dirty", true)
-            .max("last_trade_entity_index", trade_index)
-            .max("last_trade_block", event.evt_block_number)
-            .max("last_trade_timestamp", timestamp);
     }
 
     for event in token_events.listed_to_dex {

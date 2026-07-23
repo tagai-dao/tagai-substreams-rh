@@ -149,8 +149,9 @@ This module gets you only events that matched.
 
 Decodes `Trade` and `TokenListedToDex` from Token addresses learned from Pump
 `NewToken` events, including events emitted later in the creation transaction.
-ERC20 `Transfer` is intentionally excluded; holder snapshots are refreshed by
-the separate Blockscout path.
+ERC20 `Transfer` is intentionally excluded. A separate `tiptag-server` worker
+reads Blockscout and writes holder snapshots directly to business MySQL; holder
+data does not pass through this Substreams package or PostgreSQL sink.
 
 ### `db_out`
 
