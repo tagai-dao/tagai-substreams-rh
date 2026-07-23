@@ -2599,7 +2599,7 @@ fn write_walnut_operation(
     if let Some(asset) = asset {
         row.set("asset", asset);
     }
-    if !event.amount.is_empty() {
+    if should_write_walnut_operation_amount(operation_type) && !event.amount.is_empty() {
         row.set("amount", &event.amount);
     }
     if !event.secondary_amount.is_empty() {
@@ -2614,6 +2614,10 @@ fn write_walnut_operation(
     tables
         .upsert_row("accounts", account)
         .add("walnut_operation_count", 1);
+}
+
+fn should_write_walnut_operation_amount(operation_type: &str) -> bool {
+    !matches!(operation_type, "ADMINCREATE" | "ADMINADDPOOL")
 }
 
 fn bonding_curve_price(supply: &BigInt) -> BigInt {
@@ -2654,6 +2658,16 @@ mod tests {
             bonding_curve_price(&BigInt::from(0)).to_string(),
             "6500000000"
         );
+    }
+
+    #[test]
+    fn walnut_factory_metadata_is_not_written_as_operation_amount() {
+        assert!(!should_write_walnut_operation_amount("ADMINCREATE"));
+        assert!(!should_write_walnut_operation_amount("ADMINADDPOOL"));
+        assert!(should_write_walnut_operation_amount("LOCK"));
+        assert!(should_write_walnut_operation_amount(
+            "ADMINWITHDRAWNREVENUE"
+        ));
     }
 
     #[test]

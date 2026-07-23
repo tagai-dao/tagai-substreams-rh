@@ -617,7 +617,7 @@ const specs = [
       walnutOperationCount: numberText(row.walnutOperationCount),
     }),
     currentSet: true,
-    immutableFields: ["id", "joinIn"],
+    immutableFields: ["id"],
     sql: `SELECT json_build_object(
       'id', lower(id),
       'joinIn', COALESCE(joined_at, 0)::text,
@@ -850,6 +850,7 @@ const report = {
     ...(immutablePrefixMode
       ? [
           "Mutable summaries, balances, counters, status and totals: Graph historical snapshots are pruned",
+          "Account joinIn: legacy Graph can create accounts from intentionally excluded TokenTransfer events",
           "Graph rows are capped at each frozen PostgreSQL entity's maximum monotonic index",
         ]
       : []),
