@@ -38,11 +38,11 @@ const WALNUT_COMMUNITY_FACTORY: [u8; 20] = hex!("24328dcca1ba54eee82e2993f021802
 const WALNUT_STAKING_FACTORY: [u8; 20] = hex!("7df32f7a177bcfe437a040579e3bea89dc99c023");
 const WALNUT_LOCKING_FACTORY: [u8; 20] = hex!("4ca57c64dfe1cf1be977093c75f9d9cdd1dd2e10");
 const WALNUT_SOCIAL_FACTORY: [u8; 20] = hex!("ddbaBa530728b5b8939d7fddc334432490916e90");
-const BASKET_REGISTRY: [u8; 20] = hex!("121561caaffcc1f489f8f60e7f7529fd8c1c394b");
-const BASKET_HOOK: [u8; 20] = hex!("7c5f5c4358dad036cbbdde6569cbb9cec5b86a88");
-const BASKET_ROUTER: [u8; 20] = hex!("e07514fc71bcb16e6c045c937524099ae029d39b");
-const BASKET_FEE_AUCTION: [u8; 20] = hex!("17896d2f09b220a7c1a59473708320b8028dc318");
-const BASKET_REBALANCE_EXECUTOR: [u8; 20] = hex!("d3f321e93645db6a9e4948ca1198d5bf7d811108");
+const BASKET_REGISTRY: [u8; 20] = hex!("1f997deb6c8ac7bb4134bc7c6bf23f623cda25c6");
+const BASKET_HOOK: [u8; 20] = hex!("c6c999fa94199da470a17806f04de85036f02a88");
+const BASKET_ROUTER: [u8; 20] = hex!("d96e197f139b78e9f74555701f699aa051e0a50e");
+const BASKET_FEE_AUCTION: [u8; 20] = hex!("c2526404423ed03ce8d2608f5b94300f0aafa1a2");
+const BASKET_REBALANCE_EXECUTOR: [u8; 20] = hex!("773c71be8b5e3c0c49d9576211d06e2f316aaf4a");
 
 fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
     for rcpt in blk.receipts() {

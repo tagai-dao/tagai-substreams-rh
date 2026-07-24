@@ -13,7 +13,7 @@ the historical caches of the legacy protocol stream:
 
 - `substreams.yaml`: combined development package and schema reference.
 - `substreams.basket.yaml`: Basket-only production package, starting at the
-  replacement deployment block `16303863`.
+  current protocol deployment block `18022342`.
 
 The legacy production service must derive a continuation SPKG from its
 already-built v0.1.0 artifact. The rewrite only makes the two legacy Basket
@@ -95,9 +95,9 @@ production deployment. Both identities change when the WASM toolchain or
 module configuration changes, so an old value must not be reused as a release
 expectation.
 
-The Basket-only artifact is `tiptag-basket-substreams-v0.1.0.spkg` and its sink
+The Basket-only artifact is `tiptag-basket-substreams-v0.2.0.spkg` and its sink
 module is `basket_db_out`. Run it as a second SQL sink with
-`START_BLOCK=16303863`; it may share the existing PostgreSQL database because it
+`START_BLOCK=18022342`; it may share the existing PostgreSQL database because it
 writes only Basket and token-holder refresh tables and owns a separate cursor.
 
 For local acceptance, `scripts/test-reorg.sql` validates the PostgreSQL I/U/D
