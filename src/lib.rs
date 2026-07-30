@@ -38,6 +38,8 @@ const WALNUT_COMMUNITY_FACTORY: [u8; 20] = hex!("24328dcca1ba54eee82e2993f021802
 const WALNUT_STAKING_FACTORY: [u8; 20] = hex!("7df32f7a177bcfe437a040579e3bea89dc99c023");
 const WALNUT_LOCKING_FACTORY: [u8; 20] = hex!("4ca57c64dfe1cf1be977093c75f9d9cdd1dd2e10");
 const WALNUT_SOCIAL_FACTORY: [u8; 20] = hex!("ddbaBa530728b5b8939d7fddc334432490916e90");
+const WALNUT_NFT_MINING_FACTORY: [u8; 20] = hex!("b3a547f535bdc1b20eb6fd97b9524f893a75708c");
+const WALNUT_BASKET_TVL_FACTORY: [u8; 20] = hex!("9487cf9d3159f9626b9d8770e9981278d2fa1dfd");
 const BASKET_REGISTRY: [u8; 20] = hex!("1f997deb6c8ac7bb4134bc7c6bf23f623cda25c6");
 const BASKET_HOOK: [u8; 20] = hex!("c6c999fa94199da470a17806f04de85036f02a88");
 const BASKET_ROUTER: [u8; 20] = hex!("d96e197f139b78e9f74555701f699aa051e0a50e");
@@ -756,6 +758,64 @@ fn map_walnut_factory_events(
     Ok(output)
 }
 
+#[substreams::handlers::map]
+fn map_nutbox_mining_factory_events(
+    blk: eth::Block,
+) -> Result<contract::NutboxMiningFactoryEvents, substreams::errors::Error> {
+    let mut output = contract::NutboxMiningFactoryEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let mut item = contract::NutboxMiningFactoryEvent {
+                evt_tx_hash: Hex(&rcpt.transaction.hash).to_string(),
+                evt_index: log.block_index,
+                evt_block_time: Some(blk.timestamp().to_owned()),
+                evt_block_number: blk.number,
+                evt_ordinal: log.ordinal,
+                evt_block_hash: blk.hash.clone(),
+                factory: log.address.clone(),
+                operator: rcpt.transaction.from.clone(),
+                ..Default::default()
+            };
+            if log.address == WALNUT_NFT_MINING_FACTORY {
+                let Some(e) =
+                    abi::nutbox_mining::events::NftMiningPoolCreated::match_and_decode(log)
+                else {
+                    continue;
+                };
+                item.kind = "NFT_MINING_CREATED".into();
+                item.pool = e.pool;
+                item.community = e.community;
+                item.admin = e.admin;
+                item.renderer = e.renderer;
+                item.name = e.name;
+                item.symbol = e.symbol;
+                item.asset = e.payment_asset;
+                item.amount = e.mint_price.to_string();
+                item.secondary_amount = e.first_batch_supply.to_string();
+                item.ratio = e.referral_bps.to_i32() as u32;
+                item.palette_id = e.palette_id.to_i32() as u32;
+                output.events.push(item);
+            } else if log.address == WALNUT_BASKET_TVL_FACTORY {
+                let Some(e) =
+                    abi::nutbox_mining::events::BasketTvlMiningPoolCreated::match_and_decode(log)
+                else {
+                    continue;
+                };
+                item.kind = "BASKET_TVL_MINING_CREATED".into();
+                item.pool = e.pool;
+                item.community = e.community;
+                item.registry = e.basket_registry;
+                item.nft_pool = e.nft_mining_pool;
+                item.ratio = e.nft_reward_bps.to_i32() as u32;
+                item.lock_duration = e.lock_duration.to_string();
+                item.name = e.name;
+                output.events.push(item);
+            }
+        }
+    }
+    Ok(output)
+}
+
 #[substreams::handlers::store]
 fn store_walnut_contracts(events: contract::WalnutEvents, store: StoreSetString) {
     for event in events.events {
@@ -779,6 +839,250 @@ fn store_walnut_contracts(events: contract::WalnutEvents, store: StoreSetString)
             );
         }
     }
+}
+
+#[substreams::handlers::map]
+fn map_nutbox_mining_parent_events(
+    blk: eth::Block,
+) -> Result<contract::NutboxMiningEvents, substreams::errors::Error> {
+    let mut output = contract::NutboxMiningEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let mut item = contract::NutboxMiningEvent {
+                evt_tx_hash: Hex(&rcpt.transaction.hash).to_string(),
+                evt_index: log.block_index,
+                evt_block_time: Some(blk.timestamp().to_owned()),
+                evt_block_number: blk.number,
+                evt_ordinal: log.ordinal,
+                evt_block_hash: blk.hash.clone(),
+                contract: log.address.clone(),
+                pool: log.address.clone(),
+                ..Default::default()
+            };
+
+            if let Some(e) = abi::nutbox_mining::events::BatchCreated::match_and_decode(log) {
+                item.kind = "NFT_BATCH_CREATED".into();
+                item.batch_id = e.batch_id.to_string();
+                item.amount = e.max_supply.to_string();
+                item.asset = e.payment_asset;
+                item.secondary_amount = e.mint_price.to_string();
+                item.ratio = e.referral_bps.to_i32() as u32;
+                item.palette_id = e.palette_id.to_i32() as u32;
+            } else if let Some(e) = abi::nutbox_mining::events::BatchClosed::match_and_decode(log) {
+                item.kind = "NFT_BATCH_CLOSED".into();
+                item.batch_id = e.batch_id.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::BatchClosedEarly::match_and_decode(log)
+            {
+                item.kind = "NFT_BATCH_CLOSED_EARLY".into();
+                item.batch_id = e.batch_id.to_string();
+                item.amount = e.minted.to_string();
+                item.secondary_amount = e.max_supply.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::BatchPausedSet::match_and_decode(log)
+            {
+                item.kind = "NFT_BATCH_PAUSED_SET".into();
+                item.batch_id = e.batch_id.to_string();
+                item.flag = e.paused;
+            } else if let Some(e) =
+                abi::nutbox_mining::events::FundsReceiverChanged::match_and_decode(log)
+            {
+                item.kind = "NFT_FUNDS_RECEIVER_CHANGED".into();
+                item.secondary_account = e.previous_receiver;
+                item.account = e.new_receiver;
+            } else if let Some(e) =
+                abi::nutbox_mining::events::PlatformFeePaid::match_and_decode(log)
+            {
+                item.kind = "NFT_PLATFORM_FEE_PAID".into();
+                item.token_id = e.token_id.to_string();
+                item.asset = e.payment_asset;
+                item.account = e.receiver;
+                item.amount = e.amount.to_string();
+            } else if let Some(e) = abi::nutbox_mining::events::NftMinted::match_and_decode(log) {
+                item.kind = "NFT_MINTED".into();
+                item.account = e.buyer;
+                item.token_id = e.token_id.to_string();
+                item.batch_id = e.batch_id.to_string();
+                item.secondary_token_id = e.referrer_token_id.to_string();
+                item.asset = e.payment_asset;
+                item.amount = e.mint_price.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::NftReferralRecorded::match_and_decode(log)
+            {
+                item.kind = "NFT_REFERRAL_RECORDED".into();
+                item.token_id = e.referrer_token_id.to_string();
+                item.secondary_token_id = e.child_token_id.to_string();
+                item.account = e.commission_receiver;
+                item.amount = e.commission_amount.to_string();
+            } else if let Some(e) = abi::nutbox_mining::events::NftLevelUp::match_and_decode(log) {
+                item.kind = "NFT_LEVEL_UP".into();
+                item.token_id = e.token_id.to_string();
+                item.account = e.owner;
+                item.previous_level = e.previous_level.to_i32() as u32;
+                item.level = e.new_level.to_i32() as u32;
+                item.amount = e.previous_weight.to_string();
+                item.secondary_amount = e.new_weight.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::MiningWeightMoved::match_and_decode(log)
+            {
+                item.kind = "NFT_MINING_WEIGHT_MOVED".into();
+                item.token_id = e.token_id.to_string();
+                item.secondary_account = e.from;
+                item.account = e.to;
+                item.amount = e.weight.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::BasketStakeCreated::match_and_decode(log)
+            {
+                item.kind = "BASKET_STAKE_CREATED".into();
+                item.basket = e.basket;
+                item.account = e.basket_creator;
+                item.token_id = e.nft_token_id.to_string();
+                item.amount = e.mining_amount.to_string();
+                item.secondary_amount = e.updated_at.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::BasketChildPoolCreated::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_POOL_CREATED".into();
+                item.basket = e.basket;
+                item.child_pool = e.child_pool;
+                item.account = e.basket_creator;
+                item.token_id = e.nft_token_id.to_string();
+                item.ratio = e.nft_reward_bps.to_i32() as u32;
+                item.amount = e.lock_duration.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::BasketStakeUpdated::match_and_decode(log)
+            {
+                item.kind = "BASKET_STAKE_UPDATED".into();
+                item.basket = e.basket;
+                item.account = e.basket_creator;
+                item.amount = e.previous_mining_amount.to_string();
+                item.secondary_amount = e.new_mining_amount.to_string();
+                item.tertiary_amount = e.updated_at.to_string();
+            } else {
+                continue;
+            }
+            output.events.push(item);
+        }
+    }
+    Ok(output)
+}
+
+#[substreams::handlers::store]
+fn store_nutbox_mining_child_contracts(
+    events: contract::NutboxMiningEvents,
+    store: StoreSetString,
+) {
+    for event in events.events {
+        if event.kind != "BASKET_CHILD_POOL_CREATED" {
+            continue;
+        }
+        store.set(
+            event.evt_ordinal,
+            prefixed_hex(&event.child_pool),
+            &nutbox_mining_child_descriptor(&event),
+        );
+    }
+}
+
+#[substreams::handlers::map]
+fn map_nutbox_mining_child_events(
+    blk: eth::Block,
+    parent_events: contract::NutboxMiningEvents,
+    contracts: StoreGetString,
+) -> Result<contract::NutboxMiningEvents, substreams::errors::Error> {
+    let mut output = contract::NutboxMiningEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let address = prefixed_hex(&log.address);
+            let descriptor = contracts.get_at(log.ordinal, &address).or_else(|| {
+                parent_events
+                    .events
+                    .iter()
+                    .find(|event| {
+                        event.kind == "BASKET_CHILD_POOL_CREATED" && event.child_pool == log.address
+                    })
+                    .map(nutbox_mining_child_descriptor)
+            });
+            let Some(descriptor) = descriptor else {
+                continue;
+            };
+            let parts: Vec<&str> = descriptor.split('|').collect();
+            if parts.len() < 4 || parts[0] != "BASKET_STAKE_CHILD" {
+                continue;
+            }
+
+            let mut item = contract::NutboxMiningEvent {
+                evt_tx_hash: Hex(&rcpt.transaction.hash).to_string(),
+                evt_index: log.block_index,
+                evt_block_time: Some(blk.timestamp().to_owned()),
+                evt_block_number: blk.number,
+                evt_ordinal: log.ordinal,
+                evt_block_hash: blk.hash.clone(),
+                contract: log.address.clone(),
+                pool: decode_address(parts[1]),
+                child_pool: log.address.clone(),
+                basket: decode_address(parts[2]),
+                token_id: parts[3].to_string(),
+                ..Default::default()
+            };
+
+            if let Some(e) = abi::nutbox_mining::events::Deposited::match_and_decode(log) {
+                item.kind = "BASKET_CHILD_DEPOSITED".into();
+                item.account = e.user;
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::WithdrawRequested::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_WITHDRAW_REQUESTED".into();
+                item.account = e.user;
+                item.amount = e.amount.to_string();
+                item.secondary_amount = e.start_time.to_string();
+                item.tertiary_amount = e.end_time.to_string();
+            } else if let Some(e) = abi::nutbox_mining::events::Redeemed::match_and_decode(log) {
+                item.kind = "BASKET_CHILD_REDEEMED".into();
+                item.account = e.user;
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::RewardsHarvested::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_REWARDS_HARVESTED".into();
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::NftRewardsAccrued::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_NFT_REWARDS_ACCRUED".into();
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::NftRewardsClaimed::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_NFT_REWARDS_CLAIMED".into();
+                item.token_id = e.nft_token_id.to_string();
+                item.account = e.recipient;
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::ClosedParentRewardsHarvested::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_CLOSED_PARENT_REWARDS_HARVESTED".into();
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::HolderFeesHarvested::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_HOLDER_FEES_HARVESTED".into();
+                item.amount = e.amount.to_string();
+            } else if let Some(e) =
+                abi::nutbox_mining::events::RewardsClaimed::match_and_decode(log)
+            {
+                item.kind = "BASKET_CHILD_REWARDS_CLAIMED".into();
+                item.account = e.user;
+                item.amount = e.community_amount.to_string();
+                item.secondary_amount = e.holder_fee_amount.to_string();
+            } else {
+                continue;
+            }
+            output.events.push(item);
+        }
+    }
+    Ok(output)
 }
 
 #[substreams::handlers::store]
@@ -1268,6 +1572,15 @@ fn walnut_descriptor(event: &contract::WalnutEvent) -> String {
     }
 }
 
+fn nutbox_mining_child_descriptor(event: &contract::NutboxMiningEvent) -> String {
+    format!(
+        "BASKET_STAKE_CHILD|{}|{}|{}",
+        prefixed_hex(&event.pool),
+        prefixed_hex(&event.basket),
+        event.token_id
+    )
+}
+
 fn decode_address(value: &str) -> Vec<u8> {
     hex::decode(value.trim_start_matches("0x")).expect("valid stored Walnut address")
 }
@@ -1538,7 +1851,6 @@ fn write_basket_changes(
             .set("creation_block_hash", prefixed_hex(&event.evt_block_hash))
             .set("creation_transaction_hash", event.evt_tx_hash)
             .set("creation_log_index", event.evt_index);
-
     }
 
     for event in basket_events.trades {
@@ -1578,7 +1890,6 @@ fn write_basket_changes(
         if event.routed {
             row.set("router_log_index", event.router_evt_index);
         }
-
     }
 
     for event in basket_events.operations {
@@ -1736,6 +2047,547 @@ fn write_basket_changes(
     }
 }
 
+fn write_nutbox_mining_changes(
+    tables: &mut Tables,
+    factory_events: contract::NutboxMiningFactoryEvents,
+    parent_events: contract::NutboxMiningEvents,
+    child_events: contract::NutboxMiningEvents,
+) {
+    for event in &factory_events.events {
+        let pool = prefixed_hex(&event.pool);
+        let community = prefixed_hex(&event.community);
+        let factory = prefixed_hex(&event.factory);
+        let timestamp = event_timestamp(event.evt_block_time.clone());
+        let entity_index = event.evt_block_number as i64 * 1_000_000 + event.evt_index as i64;
+        let (pool_type, asset, lock_duration) = if event.kind == "NFT_MINING_CREATED" {
+            ("NFT_MINING", prefixed_hex(&event.asset), None)
+        } else {
+            (
+                "BASKET_TVL_MINING",
+                prefixed_hex(&event.registry),
+                Some(event.lock_duration.as_str()),
+            )
+        };
+
+        tables
+            .upsert_row("walnut_pools", &pool)
+            .set("entity_index", entity_index)
+            .set("created_at", timestamp)
+            .set("status", "OPENED")
+            .set("name", &event.name)
+            .set("pool_factory", &factory)
+            .set("community", &community)
+            .set("asset", asset)
+            .set("tvl", 0)
+            .set("pool_type", pool_type);
+        if let Some(duration) = lock_duration {
+            tables
+                .upsert_row("walnut_pools", &pool)
+                .set("lock_duration", duration);
+        }
+        tables
+            .upsert_row("walnut_communities", &community)
+            .add("pools_count", 1);
+        tables
+            .upsert_row("walnut_summary", "walnut")
+            .add("total_pools", 1);
+
+        if event.kind == "NFT_MINING_CREATED" {
+            tables
+                .upsert_row("walnut_nft_pools", &pool)
+                .set("community", &community)
+                .set("factory", &factory)
+                .set("admin", prefixed_hex(&event.admin))
+                .set("renderer", prefixed_hex(&event.renderer))
+                .set("name", &event.name)
+                .set("symbol", &event.symbol)
+                .set("creation_block", event.evt_block_number)
+                .set("creation_block_hash", prefixed_hex(&event.evt_block_hash))
+                .set("creation_transaction_hash", &event.evt_tx_hash)
+                .set("creation_log_index", event.evt_index)
+                .set("created_at", timestamp)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+        } else {
+            tables
+                .upsert_row("walnut_basket_tvl_pools", &pool)
+                .set("community", &community)
+                .set("factory", &factory)
+                .set("basket_registry", prefixed_hex(&event.registry))
+                .set("nft_mining_pool", prefixed_hex(&event.nft_pool))
+                .set("nft_reward_bps", event.ratio)
+                .set("lock_duration", &event.lock_duration)
+                .set("name", &event.name)
+                .set("creation_block", event.evt_block_number)
+                .set("creation_block_hash", prefixed_hex(&event.evt_block_hash))
+                .set("creation_transaction_hash", &event.evt_tx_hash)
+                .set("creation_log_index", event.evt_index)
+                .set("created_at", timestamp)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+        }
+    }
+
+    for event in &parent_events.events {
+        let pool = prefixed_hex(&event.pool);
+        let timestamp = event_timestamp(event.evt_block_time.clone());
+        let id = event_id(&event.evt_tx_hash, event.evt_index);
+
+        if event.kind.starts_with("NFT_") {
+            tables
+                .upsert_row("walnut_nft_pools", &pool)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+            let row = tables
+                .upsert_row("walnut_nft_events", &id)
+                .set("event_type", &event.kind)
+                .set("pool", &pool)
+                .set("block_number", event.evt_block_number)
+                .set("block_hash", prefixed_hex(&event.evt_block_hash))
+                .set("block_timestamp", timestamp)
+                .set("transaction_hash", &event.evt_tx_hash)
+                .set("log_index", event.evt_index);
+            if !event.token_id.is_empty() {
+                row.set("token_id", &event.token_id);
+            }
+            if !event.secondary_token_id.is_empty() {
+                row.set("secondary_token_id", &event.secondary_token_id);
+            }
+            if !event.batch_id.is_empty() {
+                row.set("batch_id", &event.batch_id);
+            }
+            if !event.account.is_empty() {
+                row.set("account", prefixed_hex(&event.account));
+            }
+            if !event.secondary_account.is_empty() {
+                row.set("secondary_account", prefixed_hex(&event.secondary_account));
+            }
+            if !event.asset.is_empty() {
+                row.set("asset", prefixed_hex(&event.asset));
+            }
+            if !event.amount.is_empty() {
+                row.set("amount", &event.amount);
+            }
+            if !event.secondary_amount.is_empty() {
+                row.set("secondary_amount", &event.secondary_amount);
+            }
+            if event.ratio != 0 {
+                row.set("ratio", event.ratio);
+            }
+            if event.level != 0 {
+                row.set("level", event.level);
+            }
+            if event.previous_level != 0 {
+                row.set("previous_level", event.previous_level);
+            }
+            if event.kind == "NFT_BATCH_PAUSED_SET" {
+                row.set("flag", event.flag);
+            }
+
+            match event.kind.as_str() {
+                "NFT_BATCH_CREATED" => {
+                    let batch_id = format!("{}:{}", pool, event.batch_id);
+                    tables
+                        .upsert_row("walnut_nft_batches", &batch_id)
+                        .set("pool", &pool)
+                        .set("batch_id", &event.batch_id)
+                        .set("payment_asset", prefixed_hex(&event.asset))
+                        .set("mint_price", &event.secondary_amount)
+                        .set("max_supply", &event.amount)
+                        .set("referral_bps", event.ratio)
+                        .set("palette_id", event.palette_id)
+                        .set("active", true)
+                        .set("paused", false)
+                        .set("creation_block", event.evt_block_number)
+                        .set("creation_transaction_hash", &event.evt_tx_hash)
+                        .set("creation_log_index", event.evt_index)
+                        .set("created_at", timestamp)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    tables
+                        .upsert_row("walnut_nft_pools", &pool)
+                        .set("current_batch_id", &event.batch_id);
+                }
+                "NFT_BATCH_CLOSED" | "NFT_BATCH_CLOSED_EARLY" => {
+                    let batch_id = format!("{}:{}", pool, event.batch_id);
+                    tables
+                        .upsert_row("walnut_nft_batches", &batch_id)
+                        .set("active", false)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                }
+                "NFT_BATCH_PAUSED_SET" => {
+                    let batch_id = format!("{}:{}", pool, event.batch_id);
+                    tables
+                        .upsert_row("walnut_nft_batches", &batch_id)
+                        .set("paused", event.flag)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                }
+                "NFT_FUNDS_RECEIVER_CHANGED" => {
+                    tables
+                        .upsert_row("walnut_nft_pools", &pool)
+                        .set("funds_receiver", prefixed_hex(&event.account));
+                }
+                "NFT_PLATFORM_FEE_PAID" => {
+                    tables
+                        .upsert_row("walnut_nft_pools", &pool)
+                        .add("total_platform_fee", parse_bigint(&event.amount));
+                }
+                "NFT_MINTED" => {
+                    let nft_id = format!("{}:{}", pool, event.token_id);
+                    let batch_id = format!("{}:{}", pool, event.batch_id);
+                    tables
+                        .upsert_row("walnut_nfts", &nft_id)
+                        .set("pool", &pool)
+                        .set("token_id", &event.token_id)
+                        .set("batch_id", &event.batch_id)
+                        .set("referrer_token_id", &event.secondary_token_id)
+                        .set("buyer", prefixed_hex(&event.account))
+                        .set("payment_asset", prefixed_hex(&event.asset))
+                        .set("mint_price", &event.amount)
+                        .set("creation_block", event.evt_block_number)
+                        .set("creation_transaction_hash", &event.evt_tx_hash)
+                        .set("creation_log_index", event.evt_index)
+                        .set("created_at", timestamp)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    tables
+                        .upsert_row("walnut_nft_batches", &batch_id)
+                        .add("minted", 1)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    tables
+                        .upsert_row("walnut_nft_pools", &pool)
+                        .add("total_supply", 1);
+                }
+                "NFT_REFERRAL_RECORDED" => {
+                    let referrer_id = format!("{}:{}", pool, event.token_id);
+                    let child_id = format!("{}:{}", pool, event.secondary_token_id);
+                    tables
+                        .upsert_row("walnut_nfts", &referrer_id)
+                        .add("referral_count", 1)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    tables
+                        .upsert_row("walnut_nfts", &child_id)
+                        .set("referrer_token_id", &event.token_id)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                }
+                "NFT_LEVEL_UP" => {
+                    let nft_id = format!("{}:{}", pool, event.token_id);
+                    let account = prefixed_hex(&event.account);
+                    let weight_delta =
+                        parse_bigint(&event.secondary_amount) - parse_bigint(&event.amount);
+                    tables
+                        .upsert_row("walnut_nfts", &nft_id)
+                        .set("level", event.level)
+                        .set("mining_weight", &event.secondary_amount)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    tables
+                        .upsert_row("walnut_nft_pools", &pool)
+                        .add("total_mining_weight", &weight_delta);
+                    let account_id = format!("{}:{}", pool, account);
+                    tables
+                        .upsert_row("walnut_nft_accounts", &account_id)
+                        .set("pool", &pool)
+                        .set("account", &account)
+                        .add("mining_weight", &weight_delta)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                }
+                "NFT_MINING_WEIGHT_MOVED" => {
+                    let nft_id = format!("{}:{}", pool, event.token_id);
+                    let from = prefixed_hex(&event.secondary_account);
+                    let to = prefixed_hex(&event.account);
+                    let weight = parse_bigint(&event.amount);
+                    tables
+                        .upsert_row("walnut_nfts", &nft_id)
+                        .set(
+                            "owner",
+                            if is_zero_address(&event.account) {
+                                ""
+                            } else {
+                                &to
+                            },
+                        )
+                        .set("mining_weight", &event.amount)
+                        .set("updated_block", event.evt_block_number)
+                        .set("updated_at", timestamp);
+                    if is_zero_address(&event.secondary_account) {
+                        tables
+                            .upsert_row("walnut_nft_pools", &pool)
+                            .add("total_mining_weight", &weight);
+                    } else {
+                        let account_id = format!("{}:{}", pool, from);
+                        tables
+                            .upsert_row("walnut_nft_accounts", &account_id)
+                            .set("pool", &pool)
+                            .set("account", &from)
+                            .add("nft_count", -1)
+                            .sub("mining_weight", &weight)
+                            .set("updated_block", event.evt_block_number)
+                            .set("updated_at", timestamp);
+                    }
+                    if is_zero_address(&event.account) {
+                        tables
+                            .upsert_row("walnut_nft_pools", &pool)
+                            .sub("total_mining_weight", &weight);
+                    } else {
+                        let account_id = format!("{}:{}", pool, to);
+                        tables
+                            .upsert_row("walnut_nft_accounts", &account_id)
+                            .set("pool", &pool)
+                            .set("account", &to)
+                            .add("nft_count", 1)
+                            .add("mining_weight", &weight)
+                            .set("updated_block", event.evt_block_number)
+                            .set("updated_at", timestamp);
+                    }
+                }
+                _ => {}
+            }
+            continue;
+        }
+
+        let basket = prefixed_hex(&event.basket);
+        let stake_id = format!("{}:{}", pool, basket);
+        tables
+            .upsert_row("walnut_basket_tvl_pools", &pool)
+            .set("updated_block", event.evt_block_number)
+            .set("updated_at", timestamp);
+        let row = tables
+            .upsert_row("walnut_basket_tvl_events", &id)
+            .set("event_type", &event.kind)
+            .set("parent_pool", &pool)
+            .set("basket", &basket)
+            .set("creator", prefixed_hex(&event.account))
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", &event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        if !event.child_pool.is_empty() {
+            row.set("child_pool", prefixed_hex(&event.child_pool));
+        }
+        if !event.token_id.is_empty() {
+            row.set("nft_token_id", &event.token_id);
+        }
+        if !event.amount.is_empty() {
+            row.set("amount", &event.amount);
+        }
+        if !event.secondary_amount.is_empty() {
+            row.set("secondary_amount", &event.secondary_amount);
+        }
+        if !event.tertiary_amount.is_empty() {
+            row.set("tertiary_amount", &event.tertiary_amount);
+        }
+        if event.ratio != 0 {
+            row.set("ratio", event.ratio);
+        }
+
+        match event.kind.as_str() {
+            "BASKET_STAKE_CREATED" => {
+                tables
+                    .upsert_row("walnut_basket_stakes", &stake_id)
+                    .set("parent_pool", &pool)
+                    .set("basket", &basket)
+                    .set("creator", prefixed_hex(&event.account))
+                    .set("nft_token_id", &event.token_id)
+                    .set("mining_amount", &event.amount)
+                    .set("chain_updated_at", &event.secondary_amount)
+                    .set("creation_block", event.evt_block_number)
+                    .set("creation_transaction_hash", &event.evt_tx_hash)
+                    .set("creation_log_index", event.evt_index)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+                tables
+                    .upsert_row("walnut_basket_tvl_pools", &pool)
+                    .add("basket_count", 1)
+                    .add("total_mining_amount", parse_bigint(&event.amount));
+            }
+            "BASKET_CHILD_POOL_CREATED" => {
+                let child = prefixed_hex(&event.child_pool);
+                tables
+                    .upsert_row("walnut_basket_stakes", &stake_id)
+                    .set("child_pool", &child)
+                    .set("nft_reward_bps", event.ratio)
+                    .set("lock_duration", &event.amount)
+                    .set("updated_block", event.evt_block_number);
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .set("parent_pool", &pool)
+                    .set("basket", &basket)
+                    .set("creator", prefixed_hex(&event.account))
+                    .set("nft_token_id", &event.token_id)
+                    .set("nft_reward_bps", event.ratio)
+                    .set("lock_duration", &event.amount)
+                    .set("creation_block", event.evt_block_number)
+                    .set("creation_transaction_hash", &event.evt_tx_hash)
+                    .set("creation_log_index", event.evt_index)
+                    .set("created_at", timestamp)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+                if !event.community.is_empty() {
+                    tables
+                        .upsert_row("walnut_basket_child_pools", &child)
+                        .set("community", prefixed_hex(&event.community));
+                }
+            }
+            "BASKET_STAKE_UPDATED" => {
+                let previous = parse_bigint(&event.amount);
+                let new_amount = parse_bigint(&event.secondary_amount);
+                let delta = new_amount - previous;
+                tables
+                    .upsert_row("walnut_basket_stakes", &stake_id)
+                    .set("mining_amount", &event.secondary_amount)
+                    .set("chain_updated_at", &event.tertiary_amount)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+                tables
+                    .upsert_row("walnut_basket_tvl_pools", &pool)
+                    .add("total_mining_amount", &delta);
+            }
+            _ => {}
+        }
+    }
+
+    for event in &child_events.events {
+        let child = prefixed_hex(&event.child_pool);
+        let parent = prefixed_hex(&event.pool);
+        let basket = prefixed_hex(&event.basket);
+        let account = if event.account.is_empty() {
+            String::new()
+        } else {
+            prefixed_hex(&event.account)
+        };
+        let timestamp = event_timestamp(event.evt_block_time.clone());
+        let id = event_id(&event.evt_tx_hash, event.evt_index);
+        tables
+            .upsert_row("walnut_basket_child_pools", &child)
+            .set("updated_block", event.evt_block_number)
+            .set("updated_at", timestamp);
+        let row = tables
+            .upsert_row("walnut_basket_child_events", &id)
+            .set("event_type", &event.kind)
+            .set("child_pool", &child)
+            .set("parent_pool", &parent)
+            .set("basket", &basket)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", &event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        if !account.is_empty() {
+            row.set("account", &account);
+        }
+        if !event.token_id.is_empty() {
+            row.set("nft_token_id", &event.token_id);
+        }
+        if !event.amount.is_empty() {
+            row.set("amount", &event.amount);
+        }
+        if !event.secondary_amount.is_empty() {
+            row.set("secondary_amount", &event.secondary_amount);
+        }
+        if !event.tertiary_amount.is_empty() {
+            row.set("tertiary_amount", &event.tertiary_amount);
+        }
+
+        let position_id = format!("{}:{}", child, account);
+        match event.kind.as_str() {
+            "BASKET_CHILD_DEPOSITED" => {
+                let amount = parse_bigint(&event.amount);
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_staked_amount", &amount);
+                tables
+                    .upsert_row("walnut_basket_child_positions", &position_id)
+                    .set("child_pool", &child)
+                    .set("parent_pool", &parent)
+                    .set("basket", &basket)
+                    .set("account", &account)
+                    .add("staked_amount", &amount)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "BASKET_CHILD_WITHDRAW_REQUESTED" => {
+                let amount = parse_bigint(&event.amount);
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .sub("total_staked_amount", &amount);
+                tables
+                    .upsert_row("walnut_basket_child_positions", &position_id)
+                    .set("child_pool", &child)
+                    .set("parent_pool", &parent)
+                    .set("basket", &basket)
+                    .set("account", &account)
+                    .sub("staked_amount", &amount)
+                    .add("withdraw_requested_amount", &amount)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "BASKET_CHILD_REDEEMED" => {
+                tables
+                    .upsert_row("walnut_basket_child_positions", &position_id)
+                    .set("child_pool", &child)
+                    .set("parent_pool", &parent)
+                    .set("basket", &basket)
+                    .set("account", &account)
+                    .add("redeemed_amount", parse_bigint(&event.amount))
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "BASKET_CHILD_REWARDS_HARVESTED" => {
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_rewards_harvested", parse_bigint(&event.amount));
+            }
+            "BASKET_CHILD_NFT_REWARDS_ACCRUED" => {
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_nft_rewards_accrued", parse_bigint(&event.amount));
+            }
+            "BASKET_CHILD_NFT_REWARDS_CLAIMED" => {
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_nft_rewards_claimed", parse_bigint(&event.amount));
+            }
+            "BASKET_CHILD_CLOSED_PARENT_REWARDS_HARVESTED" => {
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .set("closed_parent_rewards_harvested", true);
+            }
+            "BASKET_CHILD_HOLDER_FEES_HARVESTED" => {
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_holder_fees_harvested", parse_bigint(&event.amount));
+            }
+            "BASKET_CHILD_REWARDS_CLAIMED" => {
+                let community_amount = parse_bigint(&event.amount);
+                let holder_amount = parse_bigint(&event.secondary_amount);
+                tables
+                    .upsert_row("walnut_basket_child_pools", &child)
+                    .add("total_community_rewards_claimed", &community_amount)
+                    .add("total_holder_fees_claimed", &holder_amount);
+                tables
+                    .upsert_row("walnut_basket_child_positions", &position_id)
+                    .set("child_pool", &child)
+                    .set("parent_pool", &parent)
+                    .set("basket", &basket)
+                    .set("account", &account)
+                    .add("community_rewards_claimed", &community_amount)
+                    .add("holder_fees_claimed", &holder_amount)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            _ => {}
+        }
+    }
+}
+
 #[substreams::handlers::map]
 fn basket_db_out(
     basket_registry_events: contract::BasketRegistryEvents,
@@ -1747,6 +2599,17 @@ fn basket_db_out(
 }
 
 #[substreams::handlers::map]
+fn nutbox_mining_db_out(
+    factory_events: contract::NutboxMiningFactoryEvents,
+    parent_events: contract::NutboxMiningEvents,
+    child_events: contract::NutboxMiningEvents,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_nutbox_mining_changes(&mut tables, factory_events, parent_events, child_events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
 fn db_out(
     events: contract::Events,
     token_events: contract::TokenEvents,
@@ -1754,6 +2617,9 @@ fn db_out(
     ipshare_events: contract::IpShareEvents,
     walnut_factory_events: contract::WalnutEvents,
     walnut_events: contract::WalnutEvents,
+    nutbox_mining_factory_events: contract::NutboxMiningFactoryEvents,
+    nutbox_mining_parent_events: contract::NutboxMiningEvents,
+    nutbox_mining_child_events: contract::NutboxMiningEvents,
     basket_registry_events: contract::BasketRegistryEvents,
     basket_events: contract::BasketEvents,
     bonding_curve_supply: StoreGetBigInt,
@@ -1773,6 +2639,12 @@ fn db_out(
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut tables = Tables::new();
     write_basket_changes(&mut tables, basket_registry_events, basket_events);
+    write_nutbox_mining_changes(
+        &mut tables,
+        nutbox_mining_factory_events,
+        nutbox_mining_parent_events,
+        nutbox_mining_child_events,
+    );
 
     for event in events.pump_new_tokens {
         let token_id = format!("0x{}", Hex(&event.token));
@@ -1819,7 +2691,6 @@ fn db_out(
         tables
             .upsert_row("pump_summary", "pump")
             .add("token_counts", 1);
-
     }
 
     for event in token_events.trades {
@@ -1867,7 +2738,6 @@ fn db_out(
             .set("block_timestamp", timestamp)
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
-
     }
 
     for event in swap_events.swap_trades {
@@ -1903,7 +2773,6 @@ fn db_out(
             .set("block_timestamp", timestamp)
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
-
     }
 
     for event in token_events.listed_to_dex {
@@ -2617,6 +3486,31 @@ fn swap_price(sqrt_price_x96: &BigInt) -> BigInt {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use substreams_database_change::pb::sf::substreams::sink::database::v1::table_change::PrimaryKey;
+
+    fn fixture_log(address: &str, topics: &[&str], data: &str) -> eth::Log {
+        eth::Log {
+            address: hex::decode(address.trim_start_matches("0x")).unwrap(),
+            topics: topics
+                .iter()
+                .map(|value| hex::decode(value.trim_start_matches("0x")).unwrap())
+                .collect(),
+            data: hex::decode(data.trim_start_matches("0x")).unwrap(),
+            index: 0,
+            block_index: 0,
+            ordinal: 0,
+        }
+    }
+
+    fn has_table_pk(changes: &DatabaseChanges, table: &str, pk: &str) -> bool {
+        changes.table_changes.iter().any(|change| {
+            change.table == table
+                && matches!(
+                    change.primary_key.as_ref(),
+                    Some(PrimaryKey::Pk(value)) if value == pk
+                )
+        })
+    }
 
     #[test]
     fn first_rh_trade_price_matches_legacy_graph() {
@@ -2639,6 +3533,216 @@ mod tests {
         assert!(should_write_walnut_operation_amount("LOCK"));
         assert!(should_write_walnut_operation_amount(
             "ADMINWITHDRAWNREVENUE"
+        ));
+    }
+
+    #[test]
+    fn decodes_deployed_nft_first_batch() {
+        let log = fixture_log(
+            "0x6bc80df83e8a7ccece72217aa2ad69c2d9a563fb",
+            &[
+                "0x773f7aae34f9cc2c57a3849a4fbf7e0a4db182b7e52a288b2cadf536daa119f3",
+                "0x0000000000000000000000000000000000000000000000000000000000000001",
+                "0x00000000000000000000000029fed2342ae5ccba360198519f0adaf46990303f",
+            ],
+            "0x000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000021e19e0c9bab240000000000000000000000000000000000000000000000000000000000000000003e80000000000000000000000000000000000000000000000000000000000000001",
+        );
+        let event = abi::nutbox_mining::events::BatchCreated::match_and_decode(&log).unwrap();
+        assert_eq!(event.batch_id.to_string(), "1");
+        assert_eq!(event.max_supply.to_string(), "100");
+        assert_eq!(
+            prefixed_hex(&event.payment_asset),
+            "0x29fed2342ae5ccba360198519f0adaf46990303f"
+        );
+        assert_eq!(event.mint_price.to_string(), "10000000000000000000000");
+        assert_eq!(event.referral_bps.to_string(), "1000");
+        assert_eq!(event.palette_id.to_string(), "1");
+    }
+
+    #[test]
+    fn decodes_deployed_basket_child_pool() {
+        let log = fixture_log(
+            "0x1393941d40f28935a94b47e4043fb63e23c12f91",
+            &[
+                "0x14ecee82453e7cb099dd99fde0fdb05bd31acf2ec5f55d54ae52493ec785b64d",
+                "0x000000000000000000000000fc0ae4cb07e0a237b87e637f414541d526dac237",
+                "0x0000000000000000000000004b6883d6bd6e41c5b540e3886e1d34056b58c1c0",
+                "0x00000000000000000000000076b713f30734450ce566c170fda27e8dce63b1f6",
+            ],
+            "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000013880000000000000000000000000000000000000000000000000000000000004650",
+        );
+        let event =
+            abi::nutbox_mining::events::BasketChildPoolCreated::match_and_decode(&log).unwrap();
+        assert_eq!(
+            prefixed_hex(&event.basket),
+            "0xfc0ae4cb07e0a237b87e637f414541d526dac237"
+        );
+        assert_eq!(
+            prefixed_hex(&event.child_pool),
+            "0x4b6883d6bd6e41c5b540e3886e1d34056b58c1c0"
+        );
+        assert_eq!(event.nft_token_id.to_string(), "1");
+        assert_eq!(event.nft_reward_bps.to_string(), "5000");
+        assert_eq!(event.lock_duration.to_string(), "18000");
+    }
+
+    #[test]
+    fn decodes_deployed_basket_child_deposit() {
+        let log = fixture_log(
+            "0x4b6883d6bd6e41c5b540e3886e1d34056b58c1c0",
+            &[
+                "0x2da466a7b24304f47e87fa2e1e5a81b9831ce54fec19055ce277ca2f39ba42c4",
+                "0x00000000000000000000000076b713f30734450ce566c170fda27e8dce63b1f6",
+            ],
+            "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000",
+        );
+        let event = abi::nutbox_mining::events::Deposited::match_and_decode(&log).unwrap();
+        assert_eq!(
+            prefixed_hex(&event.user),
+            "0x76b713f30734450ce566c170fda27e8dce63b1f6"
+        );
+        assert_eq!(event.amount.to_string(), "1000000000000000000");
+    }
+
+    #[test]
+    fn materializes_nutbox_mining_factory_parent_and_child_rows() {
+        let community = vec![0x49; 20];
+        let nft_pool = vec![0x6b; 20];
+        let parent_pool = vec![0x13; 20];
+        let child_pool = vec![0x4b; 20];
+        let basket = vec![0xfc; 20];
+        let account = vec![0x76; 20];
+        let timestamp = Some(prost_types::Timestamp {
+            seconds: 1_785_000_000,
+            nanos: 0,
+        });
+
+        let factory_events = contract::NutboxMiningFactoryEvents {
+            events: vec![
+                contract::NutboxMiningFactoryEvent {
+                    kind: "NFT_MINING_CREATED".into(),
+                    evt_tx_hash: "factory-nft".into(),
+                    evt_index: 4,
+                    evt_block_time: timestamp.clone(),
+                    evt_block_number: 22_375_502,
+                    evt_block_hash: vec![1; 32],
+                    factory: WALNUT_NFT_MINING_FACTORY.to_vec(),
+                    community: community.clone(),
+                    pool: nft_pool.clone(),
+                    admin: account.clone(),
+                    renderer: vec![0x58; 20],
+                    asset: vec![0x29; 20],
+                    name: "Ref".into(),
+                    symbol: "REF".into(),
+                    amount: "10000".into(),
+                    secondary_amount: "100".into(),
+                    ratio: 1000,
+                    palette_id: 1,
+                    ..Default::default()
+                },
+                contract::NutboxMiningFactoryEvent {
+                    kind: "BASKET_TVL_MINING_CREATED".into(),
+                    evt_tx_hash: "factory-basket".into(),
+                    evt_index: 4,
+                    evt_block_time: timestamp.clone(),
+                    evt_block_number: 23_063_867,
+                    evt_block_hash: vec![2; 32],
+                    factory: WALNUT_BASKET_TVL_FACTORY.to_vec(),
+                    community: community.clone(),
+                    pool: parent_pool.clone(),
+                    registry: BASKET_REGISTRY.to_vec(),
+                    nft_pool: nft_pool.clone(),
+                    name: "Basket stake pool".into(),
+                    lock_duration: "18000".into(),
+                    ratio: 5000,
+                    ..Default::default()
+                },
+            ],
+        };
+        let parent_events = contract::NutboxMiningEvents {
+            events: vec![
+                contract::NutboxMiningEvent {
+                    kind: "NFT_BATCH_CREATED".into(),
+                    evt_tx_hash: "batch".into(),
+                    evt_index: 1,
+                    evt_block_time: timestamp.clone(),
+                    evt_block_number: 22_375_502,
+                    evt_block_hash: vec![1; 32],
+                    community: community.clone(),
+                    pool: nft_pool.clone(),
+                    batch_id: "1".into(),
+                    asset: vec![0x29; 20],
+                    amount: "100".into(),
+                    secondary_amount: "10000".into(),
+                    ratio: 1000,
+                    palette_id: 1,
+                    ..Default::default()
+                },
+                contract::NutboxMiningEvent {
+                    kind: "BASKET_CHILD_POOL_CREATED".into(),
+                    evt_tx_hash: "child".into(),
+                    evt_index: 2,
+                    evt_block_time: timestamp.clone(),
+                    evt_block_number: 23_108_467,
+                    evt_block_hash: vec![3; 32],
+                    community: community.clone(),
+                    pool: parent_pool.clone(),
+                    child_pool: child_pool.clone(),
+                    basket: basket.clone(),
+                    account: account.clone(),
+                    token_id: "1".into(),
+                    amount: "18000".into(),
+                    ratio: 5000,
+                    ..Default::default()
+                },
+            ],
+        };
+        let child_events = contract::NutboxMiningEvents {
+            events: vec![contract::NutboxMiningEvent {
+                kind: "BASKET_CHILD_DEPOSITED".into(),
+                evt_tx_hash: "deposit".into(),
+                evt_index: 7,
+                evt_block_time: timestamp,
+                evt_block_number: 23_121_366,
+                evt_block_hash: vec![4; 32],
+                community,
+                pool: parent_pool,
+                child_pool: child_pool.clone(),
+                basket,
+                account: account.clone(),
+                token_id: "1".into(),
+                amount: "1000000000000000000".into(),
+                ..Default::default()
+            }],
+        };
+
+        let mut tables = Tables::new();
+        write_nutbox_mining_changes(&mut tables, factory_events, parent_events, child_events);
+        let changes = tables.to_database_changes();
+        let nft_pool_id = prefixed_hex(&nft_pool);
+        let child_pool_id = prefixed_hex(&child_pool);
+        let position_id = format!("{}:{}", child_pool_id, prefixed_hex(&account));
+
+        assert!(has_table_pk(&changes, "walnut_nft_pools", &nft_pool_id));
+        assert!(has_table_pk(
+            &changes,
+            "walnut_nft_batches",
+            &format!("{}:1", nft_pool_id)
+        ));
+        assert!(has_table_pk(
+            &changes,
+            "walnut_basket_child_pools",
+            &child_pool_id
+        ));
+        assert!(has_table_pk(
+            &changes,
+            "walnut_basket_child_positions",
+            &position_id
+        ));
+        assert!(has_table_pk(
+            &changes,
+            "walnut_basket_child_events",
+            "deposit-7"
         ));
     }
 

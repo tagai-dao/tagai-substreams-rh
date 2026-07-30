@@ -143,7 +143,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for destination_module in &mut unified_modules.modules {
         let name = destination_module.name.clone();
-        let source = if name == UNIFIED_OUTPUT_MODULE || name.starts_with("ethcommon:") {
+        let source = if name == UNIFIED_OUTPUT_MODULE
+            || name.starts_with("ethcommon:")
+            || (!basket_names.contains(name.as_str())
+                && !legacy_by_name.contains_key(name.as_str()))
+        {
             ModuleSource::Template
         } else if basket_names.contains(name.as_str()) {
             ModuleSource::Basket

@@ -54,6 +54,18 @@ pub struct WalnutEvents {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NutboxMiningFactoryEvents {
+    #[prost(message, repeated, tag="1")]
+    pub events: ::prost::alloc::vec::Vec<NutboxMiningFactoryEvent>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NutboxMiningEvents {
+    #[prost(message, repeated, tag="1")]
+    pub events: ::prost::alloc::vec::Vec<NutboxMiningEvent>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BasketRegistryEvents {
     #[prost(message, repeated, tag="1")]
     pub creations: ::prost::alloc::vec::Vec<BasketCreated>,
@@ -323,6 +335,112 @@ pub struct WalnutEvent {
     pub pool_factory: ::prost::alloc::vec::Vec<u8>,
     #[prost(bytes="vec", tag="22")]
     pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NutboxMiningFactoryEvent {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub evt_tx_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="3")]
+    pub evt_index: u32,
+    #[prost(message, optional, tag="4")]
+    pub evt_block_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(uint64, tag="5")]
+    pub evt_block_number: u64,
+    #[prost(uint64, tag="6")]
+    pub evt_ordinal: u64,
+    #[prost(bytes="vec", tag="7")]
+    pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="8")]
+    pub factory: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="9")]
+    pub community: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub pool: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="11")]
+    pub admin: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="12")]
+    pub renderer: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="13")]
+    pub asset: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="14")]
+    pub registry: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="15")]
+    pub nft_pool: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="16")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="17")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag="18")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag="19")]
+    pub secondary_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="20")]
+    pub lock_duration: ::prost::alloc::string::String,
+    #[prost(uint32, tag="21")]
+    pub ratio: u32,
+    #[prost(uint32, tag="22")]
+    pub palette_id: u32,
+    #[prost(bytes="vec", tag="23")]
+    pub operator: ::prost::alloc::vec::Vec<u8>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct NutboxMiningEvent {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub evt_tx_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="3")]
+    pub evt_index: u32,
+    #[prost(message, optional, tag="4")]
+    pub evt_block_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(uint64, tag="5")]
+    pub evt_block_number: u64,
+    #[prost(uint64, tag="6")]
+    pub evt_ordinal: u64,
+    #[prost(bytes="vec", tag="7")]
+    pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="8")]
+    pub contract: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="9")]
+    pub community: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub pool: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="11")]
+    pub child_pool: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="12")]
+    pub basket: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="13")]
+    pub account: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="14")]
+    pub secondary_account: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="15")]
+    pub asset: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="16")]
+    pub token_id: ::prost::alloc::string::String,
+    #[prost(string, tag="17")]
+    pub secondary_token_id: ::prost::alloc::string::String,
+    #[prost(string, tag="18")]
+    pub batch_id: ::prost::alloc::string::String,
+    #[prost(string, tag="19")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag="20")]
+    pub secondary_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="21")]
+    pub tertiary_amount: ::prost::alloc::string::String,
+    #[prost(uint32, tag="22")]
+    pub ratio: u32,
+    #[prost(uint32, tag="23")]
+    pub level: u32,
+    #[prost(uint32, tag="24")]
+    pub previous_level: u32,
+    #[prost(bool, tag="25")]
+    pub flag: bool,
+    #[prost(uint32, tag="26")]
+    pub palette_id: u32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -30,6 +30,8 @@ message IPShareEvents {
 }
 
 message WalnutEvents { repeated Walnut_Event events = 1; }
+message NutboxMiningFactoryEvents { repeated Nutbox_Mining_Factory_Event events = 1; }
+message NutboxMiningEvents { repeated Nutbox_Mining_Event events = 1; }
 
 message BasketRegistryEvents { repeated Basket_Created creations = 1; }
 
@@ -107,6 +109,32 @@ message Walnut_Event {
     bytes operator = 20;
     bytes pool_factory = 21;
     bytes evt_block_hash = 22;
+}
+
+message Nutbox_Mining_Factory_Event {
+    string kind = 1;
+    string evt_tx_hash = 2; uint32 evt_index = 3;
+    google.protobuf.Timestamp evt_block_time = 4; uint64 evt_block_number = 5; uint64 evt_ordinal = 6;
+    bytes evt_block_hash = 7;
+    bytes factory = 8; bytes community = 9; bytes pool = 10; bytes admin = 11;
+    bytes renderer = 12; bytes asset = 13; bytes registry = 14; bytes nft_pool = 15;
+    string name = 16; string symbol = 17;
+    string amount = 18; string secondary_amount = 19; string lock_duration = 20;
+    uint32 ratio = 21; uint32 palette_id = 22;
+    bytes operator = 23;
+}
+
+message Nutbox_Mining_Event {
+    string kind = 1;
+    string evt_tx_hash = 2; uint32 evt_index = 3;
+    google.protobuf.Timestamp evt_block_time = 4; uint64 evt_block_number = 5; uint64 evt_ordinal = 6;
+    bytes evt_block_hash = 7;
+    bytes contract = 8; bytes community = 9; bytes pool = 10; bytes child_pool = 11;
+    bytes basket = 12; bytes account = 13; bytes secondary_account = 14; bytes asset = 15;
+    string token_id = 16; string secondary_token_id = 17; string batch_id = 18;
+    string amount = 19; string secondary_amount = 20; string tertiary_amount = 21;
+    uint32 ratio = 22; uint32 level = 23; uint32 previous_level = 24;
+    bool flag = 25; uint32 palette_id = 26;
 }
 
 message IPShare_Create {

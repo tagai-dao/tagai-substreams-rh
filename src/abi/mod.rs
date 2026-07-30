@@ -5,6 +5,7 @@ pub mod basket_registry;
 pub mod basket_router;
 pub mod basket_token;
 pub mod ipshare_contract;
+pub mod nutbox_mining;
 pub mod pump_contract;
 pub mod swap_hook;
 pub mod token_contract;

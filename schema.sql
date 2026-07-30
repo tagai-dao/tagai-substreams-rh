@@ -448,3 +448,188 @@ CREATE TABLE IF NOT EXISTS walnut_operations (
 );
 CREATE INDEX IF NOT EXISTS walnut_operations_account_idx ON walnut_operations (account, entity_index);
 CREATE INDEX IF NOT EXISTS walnut_operations_community_idx ON walnut_operations (community, entity_index);
+
+CREATE TABLE IF NOT EXISTS walnut_nft_pools (
+    id TEXT PRIMARY KEY,
+    community TEXT NOT NULL, factory TEXT NOT NULL, admin TEXT NOT NULL DEFAULT '',
+    renderer TEXT NOT NULL DEFAULT '', funds_receiver TEXT NOT NULL DEFAULT '',
+    name TEXT NOT NULL DEFAULT '', symbol TEXT NOT NULL DEFAULT '',
+    current_batch_id NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_supply NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_mining_weight NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_platform_fee NUMERIC(78,0) NOT NULL DEFAULT 0,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_block_hash TEXT NOT NULL DEFAULT '',
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS walnut_nft_pools_community_idx
+    ON walnut_nft_pools (community, creation_block);
+
+CREATE TABLE IF NOT EXISTS walnut_nft_batches (
+    id TEXT PRIMARY KEY,
+    pool TEXT NOT NULL, batch_id NUMERIC(78,0) NOT NULL,
+    payment_asset TEXT NOT NULL DEFAULT '', mint_price NUMERIC(78,0) NOT NULL DEFAULT 0,
+    max_supply NUMERIC(78,0) NOT NULL DEFAULT 0, minted NUMERIC(78,0) NOT NULL DEFAULT 0,
+    referral_bps INTEGER NOT NULL DEFAULT 0, palette_id INTEGER NOT NULL DEFAULT 0,
+    active BOOLEAN NOT NULL DEFAULT TRUE, paused BOOLEAN NOT NULL DEFAULT FALSE,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(pool, batch_id)
+);
+CREATE INDEX IF NOT EXISTS walnut_nft_batches_pool_idx
+    ON walnut_nft_batches (pool, batch_id);
+
+CREATE TABLE IF NOT EXISTS walnut_nfts (
+    id TEXT PRIMARY KEY,
+    pool TEXT NOT NULL, token_id NUMERIC(78,0) NOT NULL,
+    owner TEXT NOT NULL DEFAULT '', batch_id NUMERIC(78,0) NOT NULL DEFAULT 0,
+    referrer_token_id NUMERIC(78,0) NOT NULL DEFAULT 0,
+    referral_count NUMERIC(78,0) NOT NULL DEFAULT 0,
+    level INTEGER NOT NULL DEFAULT 0, mining_weight NUMERIC(78,0) NOT NULL DEFAULT 0,
+    buyer TEXT NOT NULL DEFAULT '', payment_asset TEXT NOT NULL DEFAULT '',
+    mint_price NUMERIC(78,0) NOT NULL DEFAULT 0,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(pool, token_id)
+);
+CREATE INDEX IF NOT EXISTS walnut_nfts_owner_idx ON walnut_nfts (pool, owner, token_id);
+
+CREATE TABLE IF NOT EXISTS walnut_nft_accounts (
+    id TEXT PRIMARY KEY,
+    pool TEXT NOT NULL, account TEXT NOT NULL,
+    nft_count BIGINT NOT NULL DEFAULT 0,
+    mining_weight NUMERIC(78,0) NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(pool, account)
+);
+CREATE INDEX IF NOT EXISTS walnut_nft_accounts_account_idx
+    ON walnut_nft_accounts (account, pool);
+
+CREATE TABLE IF NOT EXISTS walnut_nft_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL, pool TEXT NOT NULL,
+    token_id NUMERIC(78,0), secondary_token_id NUMERIC(78,0),
+    batch_id NUMERIC(78,0), account TEXT, secondary_account TEXT, asset TEXT,
+    amount NUMERIC(78,0), secondary_amount NUMERIC(78,0),
+    ratio INTEGER, level INTEGER, previous_level INTEGER, flag BOOLEAN,
+    block_number BIGINT NOT NULL, block_hash TEXT NOT NULL,
+    block_timestamp BIGINT NOT NULL, transaction_hash TEXT NOT NULL,
+    log_index INTEGER NOT NULL, UNIQUE(transaction_hash, log_index)
+);
+CREATE INDEX IF NOT EXISTS walnut_nft_events_pool_idx
+    ON walnut_nft_events (pool, block_number, log_index);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_tvl_pools (
+    id TEXT PRIMARY KEY,
+    community TEXT NOT NULL, factory TEXT NOT NULL, basket_registry TEXT NOT NULL,
+    nft_mining_pool TEXT NOT NULL, nft_reward_bps INTEGER NOT NULL,
+    lock_duration NUMERIC(78,0) NOT NULL, name TEXT NOT NULL DEFAULT '',
+    basket_count BIGINT NOT NULL DEFAULT 0,
+    total_mining_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_block_hash TEXT NOT NULL DEFAULT '',
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_tvl_pools_community_idx
+    ON walnut_basket_tvl_pools (community, creation_block);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_stakes (
+    id TEXT PRIMARY KEY,
+    parent_pool TEXT NOT NULL, basket TEXT NOT NULL, child_pool TEXT NOT NULL DEFAULT '',
+    creator TEXT NOT NULL, nft_token_id NUMERIC(78,0) NOT NULL,
+    mining_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    nft_reward_bps INTEGER NOT NULL DEFAULT 0,
+    lock_duration NUMERIC(78,0) NOT NULL DEFAULT 0,
+    chain_updated_at BIGINT NOT NULL DEFAULT 0,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(parent_pool, basket)
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_stakes_parent_idx
+    ON walnut_basket_stakes (parent_pool, basket);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_tvl_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL, parent_pool TEXT NOT NULL, basket TEXT NOT NULL,
+    child_pool TEXT, creator TEXT NOT NULL,
+    nft_token_id NUMERIC(78,0), amount NUMERIC(78,0),
+    secondary_amount NUMERIC(78,0), tertiary_amount NUMERIC(78,0),
+    ratio INTEGER,
+    block_number BIGINT NOT NULL, block_hash TEXT NOT NULL,
+    block_timestamp BIGINT NOT NULL, transaction_hash TEXT NOT NULL,
+    log_index INTEGER NOT NULL, UNIQUE(transaction_hash, log_index)
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_tvl_events_parent_idx
+    ON walnut_basket_tvl_events (parent_pool, block_number, log_index);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_child_pools (
+    id TEXT PRIMARY KEY,
+    parent_pool TEXT NOT NULL, community TEXT NOT NULL DEFAULT '', basket TEXT NOT NULL,
+    creator TEXT NOT NULL, nft_token_id NUMERIC(78,0) NOT NULL,
+    nft_reward_bps INTEGER NOT NULL, lock_duration NUMERIC(78,0) NOT NULL,
+    total_staked_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_rewards_harvested NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_nft_rewards_accrued NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_nft_rewards_claimed NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_holder_fees_harvested NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_community_rewards_claimed NUMERIC(78,0) NOT NULL DEFAULT 0,
+    total_holder_fees_claimed NUMERIC(78,0) NOT NULL DEFAULT 0,
+    closed_parent_rewards_harvested BOOLEAN NOT NULL DEFAULT FALSE,
+    creation_block BIGINT NOT NULL DEFAULT 0,
+    creation_transaction_hash TEXT NOT NULL DEFAULT '',
+    creation_log_index INTEGER NOT NULL DEFAULT 0,
+    created_at BIGINT NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_child_pools_parent_idx
+    ON walnut_basket_child_pools (parent_pool, basket);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_child_positions (
+    id TEXT PRIMARY KEY,
+    child_pool TEXT NOT NULL, parent_pool TEXT NOT NULL, basket TEXT NOT NULL,
+    account TEXT NOT NULL,
+    staked_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    withdraw_requested_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    redeemed_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
+    community_rewards_claimed NUMERIC(78,0) NOT NULL DEFAULT 0,
+    holder_fees_claimed NUMERIC(78,0) NOT NULL DEFAULT 0,
+    updated_block BIGINT NOT NULL DEFAULT 0,
+    updated_at BIGINT NOT NULL DEFAULT 0,
+    UNIQUE(child_pool, account)
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_child_positions_account_idx
+    ON walnut_basket_child_positions (account, child_pool);
+
+CREATE TABLE IF NOT EXISTS walnut_basket_child_events (
+    id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL, child_pool TEXT NOT NULL, parent_pool TEXT NOT NULL,
+    basket TEXT NOT NULL, account TEXT,
+    nft_token_id NUMERIC(78,0), amount NUMERIC(78,0),
+    secondary_amount NUMERIC(78,0), tertiary_amount NUMERIC(78,0),
+    block_number BIGINT NOT NULL, block_hash TEXT NOT NULL,
+    block_timestamp BIGINT NOT NULL, transaction_hash TEXT NOT NULL,
+    log_index INTEGER NOT NULL, UNIQUE(transaction_hash, log_index)
+);
+CREATE INDEX IF NOT EXISTS walnut_basket_child_events_pool_idx
+    ON walnut_basket_child_events (child_pool, block_number, log_index);

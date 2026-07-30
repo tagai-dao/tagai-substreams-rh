@@ -46,6 +46,53 @@ modules:
     inputs:
       - map: map_walnut_factory_events
 
+  - name: map_nutbox_mining_factory_events
+    kind: map
+    initialBlock: 20525715
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0xb3a547f535bdc1b20eb6fd97b9524f893a75708c || evt_addr:0x9487cf9d3159f9626b9d8770e9981278d2fa1dfd"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.NutboxMiningFactoryEvents
+
+  - name: map_nutbox_mining_parent_events
+    kind: map
+    initialBlock: 22375502
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0x773f7aae34f9cc2c57a3849a4fbf7e0a4db182b7e52a288b2cadf536daa119f3 || evt_sig:0x0d12a96208f78b6b173d4bc5f7de1d8a9377c4e33639c8ef954056f7d3508587 || evt_sig:0x8bcad579dfea1a7ff8261ce2d6a802d0b5b2c47a5312c01c1c9649f77b98e059 || evt_sig:0x655a7076047cfbad91f116664f089d13ec88275859a76f5f8e51d90a03fd80a1 || evt_sig:0xa02270409724ab2ef0cbf8f5c198a4f2693e2be21e66c222570aef73316b6643 || evt_sig:0x77d700030f2b268da198a926d3ccbf91f848f1ceb16a7b5658478a24c4320917 || evt_sig:0xf15bc1a16c526cf86779504ccec1c4a3fecd06870f7642e8c4593f4654b25840 || evt_sig:0x53dd952f18e75e99f1bd702351991dc2d8a52fba2c09fbde150664956f9e98a2 || evt_sig:0x878fe0fa783470ab12ed99491c54294f5a8441b0f1a27de57a3b1dc0c5693efb || evt_sig:0xf99bd767c79d28bc3186efc693c8b73d3ff44ff0881ddcf5f2a3cea20e543099 || evt_sig:0xd29feb834ce8f5b6ab195de35fdcd20a9ebc8acf6afa1dd0148ae766ad973bc5 || evt_sig:0x14ecee82453e7cb099dd99fde0fdb05bd31acf2ec5f55d54ae52493ec785b64d || evt_sig:0x0bef6c8193f9fb9071a84bfd42b49bc29b56aa83edd93e61f63808846198ec0a"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.NutboxMiningEvents
+
+  - name: store_nutbox_mining_child_contracts
+    kind: store
+    initialBlock: 23108467
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_nutbox_mining_parent_events
+
+  - name: map_nutbox_mining_child_events
+    kind: map
+    initialBlock: 23108467
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0x2da466a7b24304f47e87fa2e1e5a81b9831ce54fec19055ce277ca2f39ba42c4 || evt_sig:0x7a64d79878509820925daa6339976afdd4e1c50dc32bfae6820dd5792bd306a7 || evt_sig:0x4896181ff8f4543cc00db9fe9b6fb7e6f032b7eb772c72ab1ec1b4d2e03b9369 || evt_sig:0x302ece888b23f17e9addd0ad302c9b0d6619a5c38b718deb019638e29355c0fb || evt_sig:0x1a977003b349edbf8daeec5cc12a49118def262b5fb08fd665f2f6d27b427a5b || evt_sig:0x24c5aaf7bfbe3cf57a34657a764eab4bb09666b991e99640a16299a7bff8991b || evt_sig:0xfe7f80732cc46eec28e2407d5231fb2bbfa5f50aa132060ccc9351ef404a5508 || evt_sig:0x1ba6b13e1ad1190c9238c69cf5cf7cf751a265b3ed42898f7c2996afa2d4b557 || evt_sig:0xdacbdde355ba930696a362ea6738feb9f8bd52dfb3d81947558fd3217e23e325"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_nutbox_mining_parent_events
+      - store: store_nutbox_mining_child_contracts
+        mode: get
+    output:
+      type: proto:contract.v1.NutboxMiningEvents
+
   - name: map_walnut_events
     kind: map
     initialBlock: 6922897
@@ -296,6 +343,19 @@ modules:
       - map: map_token_events
       - map: map_swap_events
 
+  # Dedicated historical backfill path for the two new Nutbox mining types.
+  # It can start at 20525715 without replaying existing TagAI/IPShare/Walnut
+  # aggregates into an already populated database.
+  - name: nutbox_mining_db_out
+    kind: map
+    initialBlock: 20525715
+    inputs:
+      - map: map_nutbox_mining_factory_events
+      - map: map_nutbox_mining_parent_events
+      - map: map_nutbox_mining_child_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
   # PostgreSQL production path. The first migration slice writes Pump token
   # discoveries; subsequent slices extend this output with mutable protocol
   # state and immutable event-history tables.
@@ -309,6 +369,9 @@ modules:
       - map: map_ipshare_events
       - map: map_walnut_factory_events
       - map: map_walnut_events
+      - map: map_nutbox_mining_factory_events
+      - map: map_nutbox_mining_parent_events
+      - map: map_nutbox_mining_child_events
       - map: map_basket_registry_events
       - map: map_basket_events
       - store: store_bonding_curve_supply
