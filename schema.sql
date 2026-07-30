@@ -451,7 +451,8 @@ CREATE INDEX IF NOT EXISTS walnut_operations_community_idx ON walnut_operations 
 
 CREATE TABLE IF NOT EXISTS walnut_nft_pools (
     id TEXT PRIMARY KEY,
-    community TEXT NOT NULL, factory TEXT NOT NULL, admin TEXT NOT NULL DEFAULT '',
+    community TEXT NOT NULL DEFAULT '', factory TEXT NOT NULL DEFAULT '',
+    admin TEXT NOT NULL DEFAULT '',
     renderer TEXT NOT NULL DEFAULT '', funds_receiver TEXT NOT NULL DEFAULT '',
     name TEXT NOT NULL DEFAULT '', symbol TEXT NOT NULL DEFAULT '',
     current_batch_id NUMERIC(78,0) NOT NULL DEFAULT 0,
@@ -471,7 +472,7 @@ CREATE INDEX IF NOT EXISTS walnut_nft_pools_community_idx
 
 CREATE TABLE IF NOT EXISTS walnut_nft_batches (
     id TEXT PRIMARY KEY,
-    pool TEXT NOT NULL, batch_id NUMERIC(78,0) NOT NULL,
+    pool TEXT NOT NULL DEFAULT '', batch_id NUMERIC(78,0) NOT NULL DEFAULT 0,
     payment_asset TEXT NOT NULL DEFAULT '', mint_price NUMERIC(78,0) NOT NULL DEFAULT 0,
     max_supply NUMERIC(78,0) NOT NULL DEFAULT 0, minted NUMERIC(78,0) NOT NULL DEFAULT 0,
     referral_bps INTEGER NOT NULL DEFAULT 0, palette_id INTEGER NOT NULL DEFAULT 0,
@@ -489,7 +490,7 @@ CREATE INDEX IF NOT EXISTS walnut_nft_batches_pool_idx
 
 CREATE TABLE IF NOT EXISTS walnut_nfts (
     id TEXT PRIMARY KEY,
-    pool TEXT NOT NULL, token_id NUMERIC(78,0) NOT NULL,
+    pool TEXT NOT NULL DEFAULT '', token_id NUMERIC(78,0) NOT NULL DEFAULT 0,
     owner TEXT NOT NULL DEFAULT '', batch_id NUMERIC(78,0) NOT NULL DEFAULT 0,
     referrer_token_id NUMERIC(78,0) NOT NULL DEFAULT 0,
     referral_count NUMERIC(78,0) NOT NULL DEFAULT 0,
@@ -508,7 +509,7 @@ CREATE INDEX IF NOT EXISTS walnut_nfts_owner_idx ON walnut_nfts (pool, owner, to
 
 CREATE TABLE IF NOT EXISTS walnut_nft_accounts (
     id TEXT PRIMARY KEY,
-    pool TEXT NOT NULL, account TEXT NOT NULL,
+    pool TEXT NOT NULL DEFAULT '', account TEXT NOT NULL DEFAULT '',
     nft_count BIGINT NOT NULL DEFAULT 0,
     mining_weight NUMERIC(78,0) NOT NULL DEFAULT 0,
     updated_block BIGINT NOT NULL DEFAULT 0,
@@ -534,9 +535,10 @@ CREATE INDEX IF NOT EXISTS walnut_nft_events_pool_idx
 
 CREATE TABLE IF NOT EXISTS walnut_basket_tvl_pools (
     id TEXT PRIMARY KEY,
-    community TEXT NOT NULL, factory TEXT NOT NULL, basket_registry TEXT NOT NULL,
-    nft_mining_pool TEXT NOT NULL, nft_reward_bps INTEGER NOT NULL,
-    lock_duration NUMERIC(78,0) NOT NULL, name TEXT NOT NULL DEFAULT '',
+    community TEXT NOT NULL DEFAULT '', factory TEXT NOT NULL DEFAULT '',
+    basket_registry TEXT NOT NULL DEFAULT '', nft_mining_pool TEXT NOT NULL DEFAULT '',
+    nft_reward_bps INTEGER NOT NULL DEFAULT 0,
+    lock_duration NUMERIC(78,0) NOT NULL DEFAULT 0, name TEXT NOT NULL DEFAULT '',
     basket_count BIGINT NOT NULL DEFAULT 0,
     total_mining_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
     creation_block BIGINT NOT NULL DEFAULT 0,
@@ -552,8 +554,9 @@ CREATE INDEX IF NOT EXISTS walnut_basket_tvl_pools_community_idx
 
 CREATE TABLE IF NOT EXISTS walnut_basket_stakes (
     id TEXT PRIMARY KEY,
-    parent_pool TEXT NOT NULL, basket TEXT NOT NULL, child_pool TEXT NOT NULL DEFAULT '',
-    creator TEXT NOT NULL, nft_token_id NUMERIC(78,0) NOT NULL,
+    parent_pool TEXT NOT NULL DEFAULT '', basket TEXT NOT NULL DEFAULT '',
+    child_pool TEXT NOT NULL DEFAULT '', creator TEXT NOT NULL DEFAULT '',
+    nft_token_id NUMERIC(78,0) NOT NULL DEFAULT 0,
     mining_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
     nft_reward_bps INTEGER NOT NULL DEFAULT 0,
     lock_duration NUMERIC(78,0) NOT NULL DEFAULT 0,
@@ -584,9 +587,11 @@ CREATE INDEX IF NOT EXISTS walnut_basket_tvl_events_parent_idx
 
 CREATE TABLE IF NOT EXISTS walnut_basket_child_pools (
     id TEXT PRIMARY KEY,
-    parent_pool TEXT NOT NULL, community TEXT NOT NULL DEFAULT '', basket TEXT NOT NULL,
-    creator TEXT NOT NULL, nft_token_id NUMERIC(78,0) NOT NULL,
-    nft_reward_bps INTEGER NOT NULL, lock_duration NUMERIC(78,0) NOT NULL,
+    parent_pool TEXT NOT NULL DEFAULT '', community TEXT NOT NULL DEFAULT '',
+    basket TEXT NOT NULL DEFAULT '', creator TEXT NOT NULL DEFAULT '',
+    nft_token_id NUMERIC(78,0) NOT NULL DEFAULT 0,
+    nft_reward_bps INTEGER NOT NULL DEFAULT 0,
+    lock_duration NUMERIC(78,0) NOT NULL DEFAULT 0,
     total_staked_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
     total_rewards_harvested NUMERIC(78,0) NOT NULL DEFAULT 0,
     total_nft_rewards_accrued NUMERIC(78,0) NOT NULL DEFAULT 0,
@@ -607,8 +612,8 @@ CREATE INDEX IF NOT EXISTS walnut_basket_child_pools_parent_idx
 
 CREATE TABLE IF NOT EXISTS walnut_basket_child_positions (
     id TEXT PRIMARY KEY,
-    child_pool TEXT NOT NULL, parent_pool TEXT NOT NULL, basket TEXT NOT NULL,
-    account TEXT NOT NULL,
+    child_pool TEXT NOT NULL DEFAULT '', parent_pool TEXT NOT NULL DEFAULT '',
+    basket TEXT NOT NULL DEFAULT '', account TEXT NOT NULL DEFAULT '',
     staked_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
     withdraw_requested_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
     redeemed_amount NUMERIC(78,0) NOT NULL DEFAULT 0,
