@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.3.0
+  version: v0.4.0
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -52,11 +52,21 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: "evt_addr:0xb3a547f535bdc1b20eb6fd97b9524f893a75708c || evt_addr:0x9487cf9d3159f9626b9d8770e9981278d2fa1dfd"
+        string: "evt_addr:0xb3a547f535bdc1b20eb6fd97b9524f893a75708c || evt_addr:0xb3ebb2f53ecaad85bba502a557f7f838aeff88e0"
     inputs:
       - source: sf.ethereum.type.v2.Block
     output:
       type: proto:contract.v1.NutboxMiningFactoryEvents
+
+  # Parent mining pools are dynamically created. Keep an explicit allowlist so
+  # events emitted by retired factories or unrelated contracts are ignored.
+  - name: store_nutbox_mining_parent_contracts
+    kind: store
+    initialBlock: 20525715
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_nutbox_mining_factory_events
 
   - name: map_nutbox_mining_parent_events
     kind: map
@@ -67,6 +77,9 @@ modules:
         string: "evt_sig:0x773f7aae34f9cc2c57a3849a4fbf7e0a4db182b7e52a288b2cadf536daa119f3 || evt_sig:0x0d12a96208f78b6b173d4bc5f7de1d8a9377c4e33639c8ef954056f7d3508587 || evt_sig:0x8bcad579dfea1a7ff8261ce2d6a802d0b5b2c47a5312c01c1c9649f77b98e059 || evt_sig:0x655a7076047cfbad91f116664f089d13ec88275859a76f5f8e51d90a03fd80a1 || evt_sig:0xa02270409724ab2ef0cbf8f5c198a4f2693e2be21e66c222570aef73316b6643 || evt_sig:0x77d700030f2b268da198a926d3ccbf91f848f1ceb16a7b5658478a24c4320917 || evt_sig:0xf15bc1a16c526cf86779504ccec1c4a3fecd06870f7642e8c4593f4654b25840 || evt_sig:0x53dd952f18e75e99f1bd702351991dc2d8a52fba2c09fbde150664956f9e98a2 || evt_sig:0x878fe0fa783470ab12ed99491c54294f5a8441b0f1a27de57a3b1dc0c5693efb || evt_sig:0xf99bd767c79d28bc3186efc693c8b73d3ff44ff0881ddcf5f2a3cea20e543099 || evt_sig:0xd29feb834ce8f5b6ab195de35fdcd20a9ebc8acf6afa1dd0148ae766ad973bc5 || evt_sig:0x14ecee82453e7cb099dd99fde0fdb05bd31acf2ec5f55d54ae52493ec785b64d || evt_sig:0x0bef6c8193f9fb9071a84bfd42b49bc29b56aa83edd93e61f63808846198ec0a"
     inputs:
       - source: sf.ethereum.type.v2.Block
+      - map: map_nutbox_mining_factory_events
+      - store: store_nutbox_mining_parent_contracts
+        mode: get
     output:
       type: proto:contract.v1.NutboxMiningEvents
 
@@ -349,6 +362,18 @@ modules:
   - name: nutbox_mining_db_out
     kind: map
     initialBlock: 20525715
+    inputs:
+      - map: map_nutbox_mining_factory_events
+      - map: map_nutbox_mining_parent_events
+      - map: map_nutbox_mining_child_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # Replacement-only backfill sink. It intentionally excludes NFT mining
+  # rows so the Basket TVL protocol can be cleared and replayed independently.
+  - name: basket_tvl_mining_db_out
+    kind: map
+    initialBlock: 25576285
     inputs:
       - map: map_nutbox_mining_factory_events
       - map: map_nutbox_mining_parent_events

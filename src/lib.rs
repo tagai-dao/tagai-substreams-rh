@@ -39,7 +39,7 @@ const WALNUT_STAKING_FACTORY: [u8; 20] = hex!("7df32f7a177bcfe437a040579e3bea89d
 const WALNUT_LOCKING_FACTORY: [u8; 20] = hex!("4ca57c64dfe1cf1be977093c75f9d9cdd1dd2e10");
 const WALNUT_SOCIAL_FACTORY: [u8; 20] = hex!("ddbaBa530728b5b8939d7fddc334432490916e90");
 const WALNUT_NFT_MINING_FACTORY: [u8; 20] = hex!("b3a547f535bdc1b20eb6fd97b9524f893a75708c");
-const WALNUT_BASKET_TVL_FACTORY: [u8; 20] = hex!("9487cf9d3159f9626b9d8770e9981278d2fa1dfd");
+const WALNUT_BASKET_TVL_FACTORY: [u8; 20] = hex!("b3ebb2f53ecaad85bba502a557f7f838aeff88e0");
 const BASKET_REGISTRY: [u8; 20] = hex!("1f997deb6c8ac7bb4134bc7c6bf23f623cda25c6");
 const BASKET_HOOK: [u8; 20] = hex!("c6c999fa94199da470a17806f04de85036f02a88");
 const BASKET_ROUTER: [u8; 20] = hex!("d96e197f139b78e9f74555701f699aa051e0a50e");
@@ -816,6 +816,27 @@ fn map_nutbox_mining_factory_events(
     Ok(output)
 }
 
+fn nutbox_mining_parent_descriptor(event: &contract::NutboxMiningFactoryEvent) -> String {
+    format!("{}|{}", event.kind, prefixed_hex(&event.community),)
+}
+
+#[substreams::handlers::store]
+fn store_nutbox_mining_parent_contracts(
+    events: contract::NutboxMiningFactoryEvents,
+    store: StoreSetString,
+) {
+    for event in events.events {
+        if event.kind != "NFT_MINING_CREATED" && event.kind != "BASKET_TVL_MINING_CREATED" {
+            continue;
+        }
+        store.set(
+            event.evt_ordinal,
+            prefixed_hex(&event.pool),
+            &nutbox_mining_parent_descriptor(&event),
+        );
+    }
+}
+
 #[substreams::handlers::store]
 fn store_walnut_contracts(events: contract::WalnutEvents, store: StoreSetString) {
     for event in events.events {
@@ -844,10 +865,28 @@ fn store_walnut_contracts(events: contract::WalnutEvents, store: StoreSetString)
 #[substreams::handlers::map]
 fn map_nutbox_mining_parent_events(
     blk: eth::Block,
+    factory_events: contract::NutboxMiningFactoryEvents,
+    contracts: StoreGetString,
 ) -> Result<contract::NutboxMiningEvents, substreams::errors::Error> {
     let mut output = contract::NutboxMiningEvents::default();
     for rcpt in blk.receipts() {
         for log in &rcpt.receipt.logs {
+            let address = prefixed_hex(&log.address);
+            let descriptor = contracts.get_at(log.ordinal, &address).or_else(|| {
+                factory_events
+                    .events
+                    .iter()
+                    .find(|event| event.pool == log.address)
+                    .map(nutbox_mining_parent_descriptor)
+            });
+            let Some(descriptor) = descriptor else {
+                continue;
+            };
+            let parts: Vec<&str> = descriptor.split('|').collect();
+            if parts.len() < 2 {
+                continue;
+            }
+
             let mut item = contract::NutboxMiningEvent {
                 evt_tx_hash: Hex(&rcpt.transaction.hash).to_string(),
                 evt_index: log.block_index,
@@ -857,6 +896,7 @@ fn map_nutbox_mining_parent_events(
                 evt_block_hash: blk.hash.clone(),
                 contract: log.address.clone(),
                 pool: log.address.clone(),
+                community: decode_address(parts[1]),
                 ..Default::default()
             };
 
@@ -2604,6 +2644,24 @@ fn nutbox_mining_db_out(
     parent_events: contract::NutboxMiningEvents,
     child_events: contract::NutboxMiningEvents,
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_nutbox_mining_changes(&mut tables, factory_events, parent_events, child_events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn basket_tvl_mining_db_out(
+    mut factory_events: contract::NutboxMiningFactoryEvents,
+    mut parent_events: contract::NutboxMiningEvents,
+    child_events: contract::NutboxMiningEvents,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    factory_events
+        .events
+        .retain(|event| event.kind == "BASKET_TVL_MINING_CREATED");
+    parent_events
+        .events
+        .retain(|event| event.kind.starts_with("BASKET_"));
+
     let mut tables = Tables::new();
     write_nutbox_mining_changes(&mut tables, factory_events, parent_events, child_events);
     Ok(tables.to_database_changes())
