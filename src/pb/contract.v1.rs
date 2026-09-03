@@ -88,6 +88,220 @@ pub struct BasketEvents {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct V11ProtocolEvents {
+    #[prost(message, repeated, tag="1")]
+    pub events: ::prost::alloc::vec::Vec<V11ProtocolEvent>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct V11ProtocolEvent {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub evt_tx_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="3")]
+    pub evt_index: u32,
+    #[prost(message, optional, tag="4")]
+    pub evt_block_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(uint64, tag="5")]
+    pub evt_block_number: u64,
+    #[prost(uint64, tag="6")]
+    pub evt_ordinal: u64,
+    #[prost(bytes="vec", tag="7")]
+    pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="8")]
+    pub contract: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="9")]
+    pub pool_id: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub token: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="11")]
+    pub token0: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="12")]
+    pub token1: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="13")]
+    pub community: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="14")]
+    pub account: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="15")]
+    pub recipient: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="16")]
+    pub calculator: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="17")]
+    pub route_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", repeated, tag="18")]
+    pub pool_ids: ::prost::alloc::vec::Vec<::prost::alloc::vec::Vec<u8>>,
+    #[prost(uint32, tag="19")]
+    pub source_type: u32,
+    #[prost(uint32, tag="20")]
+    pub previous_source_type: u32,
+    #[prost(string, tag="21")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag="22")]
+    pub secondary_amount: ::prost::alloc::string::String,
+    #[prost(bool, tag="23")]
+    pub flag: bool,
+    #[prost(bytes="vec", tag="24")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag="25")]
+    pub ratio0: u32,
+    #[prost(uint32, tag="26")]
+    pub ratio1: u32,
+    #[prost(uint32, tag="27")]
+    pub ratio2: u32,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexBrokerEvents {
+    #[prost(message, repeated, tag="1")]
+    pub events: ::prost::alloc::vec::Vec<IndexBrokerEvent>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IndexBrokerEvent {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub evt_tx_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="3")]
+    pub evt_index: u32,
+    #[prost(message, optional, tag="4")]
+    pub evt_block_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(uint64, tag="5")]
+    pub evt_block_number: u64,
+    #[prost(uint64, tag="6")]
+    pub evt_ordinal: u64,
+    #[prost(bytes="vec", tag="7")]
+    pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="8")]
+    pub source: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="9")]
+    pub factory: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub pool: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="11")]
+    pub amm: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="12")]
+    pub token_id: ::prost::alloc::string::String,
+    #[prost(string, tag="13")]
+    pub secondary_token_id: ::prost::alloc::string::String,
+    #[prost(bytes="vec", tag="14")]
+    pub account: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="15")]
+    pub secondary_account: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="16")]
+    pub asset: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="17")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag="18")]
+    pub secondary_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="19")]
+    pub tertiary_amount: ::prost::alloc::string::String,
+    #[prost(uint32, tag="20")]
+    pub ratio: u32,
+    #[prost(uint32, tag="21")]
+    pub level: u32,
+    #[prost(uint32, tag="22")]
+    pub previous_level: u32,
+    #[prost(bool, tag="23")]
+    pub flag: bool,
+    #[prost(bytes="vec", tag="24")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="25")]
+    pub community: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="26")]
+    pub admin: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="27")]
+    pub nft_template: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="28")]
+    pub community_token: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="29")]
+    pub renderer: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="30")]
+    pub funds_receiver: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="31")]
+    pub name: ::prost::alloc::string::String,
+    #[prost(string, tag="32")]
+    pub symbol: ::prost::alloc::string::String,
+    #[prost(string, tag="33")]
+    pub community_token_price: ::prost::alloc::string::String,
+    #[prost(string, tag="34")]
+    pub activation_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="35")]
+    pub recommit_price: ::prost::alloc::string::String,
+    #[prost(string, tag="36")]
+    pub native_price: ::prost::alloc::string::String,
+    #[prost(string, tag="37")]
+    pub max_supply: ::prost::alloc::string::String,
+    #[prost(bool, tag="38")]
+    pub lock_whitelist_slots: bool,
+    #[prost(bool, tag="39")]
+    pub reroll_enabled: bool,
+    #[prost(string, tag="40")]
+    pub total_whitelist_allocation: ::prost::alloc::string::String,
+    #[prost(bytes="vec", tag="41")]
+    pub pump: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="42")]
+    pub nutbox_router: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="43")]
+    pub price_quote_token: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="44")]
+    pub index_token: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag="45")]
+    pub normal_fee_bps: u32,
+    #[prost(uint32, tag="46")]
+    pub specific_fee_bps: u32,
+    #[prost(string, repeated, tag="47")]
+    pub level_thresholds: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(string, repeated, tag="48")]
+    pub level_weights: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    #[prost(bytes="vec", tag="49")]
+    pub price_source_data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(string, tag="50")]
+    pub minimum_index_mining_weight: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ImportedTradeEvents {
+    #[prost(message, repeated, tag="1")]
+    pub trades: ::prost::alloc::vec::Vec<ImportedTrade>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ImportedTrade {
+    #[prost(string, tag="1")]
+    pub venue: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub evt_tx_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="3")]
+    pub evt_index: u32,
+    #[prost(message, optional, tag="4")]
+    pub evt_block_time: ::core::option::Option<::prost_types::Timestamp>,
+    #[prost(uint64, tag="5")]
+    pub evt_block_number: u64,
+    #[prost(uint64, tag="6")]
+    pub evt_ordinal: u64,
+    #[prost(bytes="vec", tag="7")]
+    pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="8")]
+    pub token: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="9")]
+    pub trader: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub sellsman: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="11")]
+    pub recipient: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bool, tag="12")]
+    pub is_buy: bool,
+    #[prost(string, tag="13")]
+    pub token_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="14")]
+    pub native_amount: ::prost::alloc::string::String,
+    #[prost(string, tag="15")]
+    pub nutbox_token_fee: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct BasketCreated {
     #[prost(string, tag="1")]
     pub evt_tx_hash: ::prost::alloc::string::String,
@@ -287,6 +501,10 @@ pub struct BasketRebalance {
     pub nav_after: ::prost::alloc::string::String,
     #[prost(bytes="vec", tag="9")]
     pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag="10")]
+    pub sell_mask: u32,
+    #[prost(uint32, tag="11")]
+    pub buy_mask: u32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -711,6 +929,10 @@ pub struct PumpNewToken {
     pub evt_ordinal: u64,
     #[prost(bytes="vec", tag="9")]
     pub evt_block_hash: ::prost::alloc::vec::Vec<u8>,
+    #[prost(bytes="vec", tag="10")]
+    pub pump: ::prost::alloc::vec::Vec<u8>,
+    #[prost(uint32, tag="11")]
+    pub version: u32,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]

@@ -17,6 +17,14 @@ fn main() -> Result<(), anyhow::Error> {
         "abi/basket_token.abi.json",
         "abi/basket_auction.abi.json",
         "abi/basket_rebalance.abi.json",
+        "abi/basket_rebalance_v3.abi.json",
+        "abi/import_helper.abi.json",
+        "abi/tagai_swap_wrapper.abi.json",
+        "abi/nutbox_router.abi.json",
+        "abi/nutbox_community_fee_hook.abi.json",
+        "abi/index_broker_factory.abi.json",
+        "abi/index_broker_pool.abi.json",
+        "abi/index_broker_amm.abi.json",
     ];
     let file_output_names = [
         "src/abi/pump_contract.rs",
@@ -31,6 +39,14 @@ fn main() -> Result<(), anyhow::Error> {
         "src/abi/basket_token.rs",
         "src/abi/basket_auction.rs",
         "src/abi/basket_rebalance.rs",
+        "src/abi/basket_rebalance_v3.rs",
+        "src/abi/import_helper.rs",
+        "src/abi/tagai_swap_wrapper.rs",
+        "src/abi/nutbox_router.rs",
+        "src/abi/nutbox_community_fee_hook.rs",
+        "src/abi/index_broker_factory.rs",
+        "src/abi/index_broker_pool.rs",
+        "src/abi/index_broker_amm.rs",
     ];
 
     let mut i = 0;

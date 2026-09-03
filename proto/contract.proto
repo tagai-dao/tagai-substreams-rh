@@ -44,6 +44,52 @@ message BasketEvents {
     repeated Basket_Rebalance rebalances = 6;
 }
 
+message V11ProtocolEvents { repeated V11_Protocol_Event events = 1; }
+
+message V11_Protocol_Event {
+    string kind = 1;
+    string evt_tx_hash = 2; uint32 evt_index = 3;
+    google.protobuf.Timestamp evt_block_time = 4; uint64 evt_block_number = 5; uint64 evt_ordinal = 6;
+    bytes evt_block_hash = 7; bytes contract = 8; bytes pool_id = 9;
+    bytes token = 10; bytes token0 = 11; bytes token1 = 12; bytes community = 13;
+    bytes account = 14; bytes recipient = 15; bytes calculator = 16; bytes route_hash = 17;
+    repeated bytes pool_ids = 18; uint32 source_type = 19; uint32 previous_source_type = 20;
+    string amount = 21; string secondary_amount = 22; bool flag = 23;
+    bytes data = 24; uint32 ratio0 = 25; uint32 ratio1 = 26; uint32 ratio2 = 27;
+}
+
+message IndexBrokerEvents { repeated Index_Broker_Event events = 1; }
+
+message Index_Broker_Event {
+    string kind = 1;
+    string evt_tx_hash = 2; uint32 evt_index = 3;
+    google.protobuf.Timestamp evt_block_time = 4; uint64 evt_block_number = 5; uint64 evt_ordinal = 6;
+    bytes evt_block_hash = 7; bytes source = 8; bytes factory = 9; bytes pool = 10; bytes amm = 11;
+    string token_id = 12; string secondary_token_id = 13; bytes account = 14;
+    bytes secondary_account = 15; bytes asset = 16; string amount = 17;
+    string secondary_amount = 18; string tertiary_amount = 19; uint32 ratio = 20;
+    uint32 level = 21; uint32 previous_level = 22; bool flag = 23; bytes data = 24;
+    bytes community = 25; bytes admin = 26; bytes nft_template = 27; bytes community_token = 28;
+    bytes renderer = 29; bytes funds_receiver = 30; string name = 31; string symbol = 32;
+    string community_token_price = 33; string activation_amount = 34; string recommit_price = 35;
+    string native_price = 36; string max_supply = 37; bool lock_whitelist_slots = 38;
+    bool reroll_enabled = 39; string total_whitelist_allocation = 40; bytes pump = 41;
+    bytes nutbox_router = 42; bytes price_quote_token = 43; bytes index_token = 44;
+    uint32 normal_fee_bps = 45; uint32 specific_fee_bps = 46;
+    repeated string level_thresholds = 47; repeated string level_weights = 48;
+    bytes price_source_data = 49;
+    string minimum_index_mining_weight = 50;
+}
+
+message ImportedTradeEvents { repeated Imported_Trade trades = 1; }
+message Imported_Trade {
+    string venue = 1; string evt_tx_hash = 2; uint32 evt_index = 3;
+    google.protobuf.Timestamp evt_block_time = 4; uint64 evt_block_number = 5; uint64 evt_ordinal = 6;
+    bytes evt_block_hash = 7; bytes token = 8; bytes trader = 9; bytes sellsman = 10;
+    bytes recipient = 11; bool is_buy = 12; string token_amount = 13;
+    string native_amount = 14; string nutbox_token_fee = 15;
+}
+
 message Basket_Created {
     string evt_tx_hash = 1; uint32 evt_index = 2;
     google.protobuf.Timestamp evt_block_time = 3; uint64 evt_block_number = 4; uint64 evt_ordinal = 5;
@@ -96,6 +142,7 @@ message Basket_Rebalance {
     string evt_tx_hash = 1; uint32 evt_index = 2;
     google.protobuf.Timestamp evt_block_time = 3; uint64 evt_block_number = 4; uint64 evt_ordinal = 5;
     bytes basket = 6; string nav_before = 7; string nav_after = 8; bytes evt_block_hash = 9;
+    uint32 sell_mask = 10; uint32 buy_mask = 11;
 }
 
 message Walnut_Event {
@@ -250,6 +297,8 @@ message Pump_NewToken {
     bytes creator = 7;
     uint64 evt_ordinal = 8;
     bytes evt_block_hash = 9;
+    bytes pump = 10;
+    uint32 version = 11;
 }
 message Pump_NutboxAllocationParked {
     string evt_tx_hash = 1;

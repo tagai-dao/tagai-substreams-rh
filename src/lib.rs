@@ -21,16 +21,20 @@ use substreams_database_change::{
     pb::sf::substreams::sink::database::v1::DatabaseChanges, tables::Tables,
 };
 use substreams_ethereum::pb::eth::v2 as eth;
-use substreams_ethereum::Event;
+use substreams_ethereum::{Event, Function};
 
 #[allow(unused_imports)] // Might not be needed depending on actual ABI, hence the allow
 use {num_traits::cast::ToPrimitive, std::str::FromStr, substreams::scalar::BigDecimal};
 
 substreams_ethereum::init!();
 
-const PUMP_TRACKED_CONTRACT: [u8; 20] = hex!("6c75e165e52e9c1661a75041650be2d919ee02a1");
+const PUMP_V9: [u8; 20] = hex!("6c75e165e52e9c1661a75041650be2d919ee02a1");
+const PUMP_V11: [u8; 20] = hex!("7686cbaf2dfc7000eb9b0d6de81e48c1211d2655");
+const PUMP_CONTRACTS: [[u8; 20]; 2] = [PUMP_V9, PUMP_V11];
 const IPSHARE_TRACKED_CONTRACT: [u8; 20] = hex!("8a7b0d80fa92699ce3e5bb2c8fe404d6733796d1");
-const SWAP_HOOK_CONTRACT: [u8; 20] = hex!("5e8e2d77ce0d2e04ba058bbcecc13c7c8adb20cc");
+const SWAP_HOOK_V9: [u8; 20] = hex!("5e8e2d77ce0d2e04ba058bbcecc13c7c8adb20cc");
+const SWAP_HOOK_V11: [u8; 20] = hex!("841dcad307a4444dc9e65f5709b2dc5e054c20cc");
+const SWAP_HOOK_CONTRACTS: [[u8; 20]; 2] = [SWAP_HOOK_V9, SWAP_HOOK_V11];
 const CL_POOL_MANAGER: [u8; 20] = hex!("8366a39cc670b4001a1121b8f6a443a643e40951");
 const SWAP_TOPIC: [u8; 32] =
     hex!("40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f");
@@ -41,10 +45,45 @@ const WALNUT_SOCIAL_FACTORY: [u8; 20] = hex!("ddbaBa530728b5b8939d7fddc334432490
 const WALNUT_NFT_MINING_FACTORY: [u8; 20] = hex!("b3a547f535bdc1b20eb6fd97b9524f893a75708c");
 const WALNUT_BASKET_TVL_FACTORY: [u8; 20] = hex!("b3ebb2f53ecaad85bba502a557f7f838aeff88e0");
 const BASKET_REGISTRY: [u8; 20] = hex!("1f997deb6c8ac7bb4134bc7c6bf23f623cda25c6");
-const BASKET_HOOK: [u8; 20] = hex!("c6c999fa94199da470a17806f04de85036f02a88");
-const BASKET_ROUTER: [u8; 20] = hex!("d96e197f139b78e9f74555701f699aa051e0a50e");
+const BASKET_HOOK_V1: [u8; 20] = hex!("c6c999fa94199da470a17806f04de85036f02a88");
+const BASKET_HOOK_V3: [u8; 20] = hex!("7103aa53a7de0af737d1dc1a257838f6f488aa88");
+const BASKET_HOOKS: [[u8; 20]; 2] = [BASKET_HOOK_V1, BASKET_HOOK_V3];
+const BASKET_ROUTER_V1: [u8; 20] = hex!("d96e197f139b78e9f74555701f699aa051e0a50e");
+const BASKET_ROUTER_V3: [u8; 20] = hex!("9b5e6b7cc3661737e6a118e0d4f0f89fb1034653");
+const BASKET_ROUTERS: [[u8; 20]; 2] = [BASKET_ROUTER_V1, BASKET_ROUTER_V3];
 const BASKET_FEE_AUCTION: [u8; 20] = hex!("c2526404423ed03ce8d2608f5b94300f0aafa1a2");
-const BASKET_REBALANCE_EXECUTOR: [u8; 20] = hex!("773c71be8b5e3c0c49d9576211d06e2f316aaf4a");
+const BASKET_REBALANCE_EXECUTOR_V1: [u8; 20] =
+    hex!("773c71be8b5e3c0c49d9576211d06e2f316aaf4a");
+const BASKET_REBALANCE_EXECUTOR_V3: [u8; 20] =
+    hex!("1bca8a39021f6c65b62bbe79a59e41215cf19264");
+const IMPORT_HELPER: [u8; 20] = hex!("ddf74905ad9ff90977154df960e21517f7e11aca");
+const TAGAI_SWAP_WRAPPER: [u8; 20] = hex!("91ddcaeef99d674cddfffd1c1a204c5be8291a92");
+const NUTBOX_ROUTER: [u8; 20] = hex!("200115d733106eca3954eaa5d1fcbc6d0efb78ae");
+const NUTBOX_COMMUNITY_FEE_HOOK: [u8; 20] =
+    hex!("58e2bf5481fb1a21b477a469b278183bd93140cc");
+const INDEX_BROKER_FACTORY: [u8; 20] = hex!("678871773b07322aa927fe5057870d1356f09676");
+const INDEX_BROKER_DEFAULT_INDEX: [u8; 20] = hex!("90d2cca000dc36fa8401632c67fafda7d7860c07");
+const INDEX_BROKER_STAKE_TEMPLATE: [u8; 20] = hex!("0971018d38523021333b94088e69fcf1726606b1");
+const RH_WETH: [u8; 20] = hex!("0bd7d308f8e1639fab988df18a8011f41eacad73");
+const WRAPPER_FEE_ADDRESS: [u8; 20] = hex!("06deb72b2e156ddd383651ac3d2dab5892d9c048");
+const V2_SWAP_TOPIC: [u8; 32] =
+    hex!("d78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822");
+const V3_SWAP_TOPIC: [u8; 32] =
+    hex!("c42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67");
+
+fn is_tracked_contract(address: &[u8], contracts: &[[u8; 20]]) -> bool {
+    contracts.iter().any(|contract| address == contract)
+}
+
+fn pump_version(address: &[u8]) -> Option<u32> {
+    if address == PUMP_V9 {
+        Some(9)
+    } else if address == PUMP_V11 {
+        Some(11)
+    } else {
+        None
+    }
+}
 
 fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
     for rcpt in blk.receipts() {
@@ -52,7 +91,7 @@ fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
             .receipt
             .logs
             .iter()
-            .filter(|log| log.address == PUMP_TRACKED_CONTRACT)
+            .filter(|log| is_tracked_contract(&log.address, &PUMP_CONTRACTS))
         {
             if let Some(event) = abi::pump_contract::events::CreateFeeChanged::match_and_decode(log)
             {
@@ -119,6 +158,8 @@ fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
                     creator: event.creator,
                     tick: event.tick,
                     token: event.token,
+                    pump: log.address.clone(),
+                    version: pump_version(&log.address).expect("tracked Pump has a version"),
                     evt_ordinal: log.ordinal,
                     evt_block_hash: blk.hash.clone(),
                 });
@@ -192,6 +233,1035 @@ fn map_events(blk: eth::Block) -> Result<contract::Events, substreams::errors::E
     Ok(events)
 }
 
+fn new_v11_event(
+    blk: &eth::Block,
+    rcpt: &eth::TransactionTrace,
+    log: &eth::Log,
+    kind: &str,
+) -> contract::V11ProtocolEvent {
+    contract::V11ProtocolEvent {
+        kind: kind.into(),
+        evt_tx_hash: Hex(&rcpt.hash).to_string(),
+        evt_index: log.block_index,
+        evt_block_time: Some(blk.timestamp().to_owned()),
+        evt_block_number: blk.number,
+        evt_ordinal: log.ordinal,
+        evt_block_hash: blk.hash.clone(),
+        contract: log.address.clone(),
+        ..Default::default()
+    }
+}
+
+#[substreams::handlers::map]
+fn map_v11_protocol_events(
+    blk: eth::Block,
+) -> Result<contract::V11ProtocolEvents, substreams::errors::Error> {
+    let mut output = contract::V11ProtocolEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let item = if log.address == IMPORT_HELPER {
+                if let Some(event) =
+                    abi::import_helper::events::CommunityCreated::match_and_decode(log)
+                {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "COMMUNITY_CREATED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.pool_id = event.pool;
+                    item.account = event.creator;
+                    item.calculator = event.calculator;
+                    item
+                } else if let Some(event) =
+                    abi::import_helper::events::ImportedCommunityRecorded::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "IMPORTED_COMMUNITY_RECORDED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.account = event.creator;
+                    item
+                } else {
+                    continue;
+                }
+            } else if log.address == TAGAI_SWAP_WRAPPER {
+                if let Some(event) =
+                    abi::tagai_swap_wrapper::events::ImportedMarketRegistered::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "IMPORTED_MARKET_REGISTERED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.account = event.deployer;
+                    item
+                } else if let Some(event) =
+                    abi::tagai_swap_wrapper::events::NutboxTokenFeeAccrued::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "NUTBOX_TOKEN_FEE_ACCRUED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.amount = event.amount.to_string();
+                    item.secondary_amount = event.pending_amount.to_string();
+                    item
+                } else if let Some(event) =
+                    abi::tagai_swap_wrapper::events::NutboxTokenFeeInjected::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "NUTBOX_TOKEN_FEE_INJECTED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.amount = event.amount.to_string();
+                    item
+                } else if let Some(event) = abi::tagai_swap_wrapper::events::NutboxTokenFeeInjectionFailed::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "NUTBOX_TOKEN_FEE_INJECTION_FAILED");
+                    item.token = event.token;
+                    item.community = event.community;
+                    item.amount = event.amount.to_string();
+                    item.data = event.reason;
+                    item
+                } else if let Some(event) =
+                    abi::tagai_swap_wrapper::events::FeeRatiosChanged::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "WRAPPER_FEE_RATIOS_CHANGED");
+                    item.ratio0 = event.sellsman_ratio.to_i32().max(0) as u32;
+                    item.ratio1 = event.tagai_ratio.to_i32().max(0) as u32;
+                    item.ratio2 = event.nutbox_token_ratio.to_i32().max(0) as u32;
+                    item
+                } else if let Some(event) =
+                    abi::tagai_swap_wrapper::events::NutboxRouterUpdated::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "NUTBOX_ROUTER_UPDATED");
+                    item.account = event.nutbox_router;
+                    item
+                } else if let Some(event) =
+                    abi::tagai_swap_wrapper::events::V4PoolManagerUpdated::match_and_decode(log)
+                {
+                    let mut item =
+                        new_v11_event(&blk, &rcpt.transaction, log, "V4_POOL_MANAGER_UPDATED");
+                    item.account = event.pool_manager;
+                    item.flag = event.allowed;
+                    item
+                } else {
+                    continue;
+                }
+            } else if log.address == NUTBOX_ROUTER {
+                if let Some(event) = abi::nutbox_router::events::PricePoolAdded::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "PRICE_POOL_ADDED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.token0 = event.token0;
+                    item.token1 = event.token1;
+                    item.source_type = event.source_type.to_i32().max(0) as u32;
+                    item.data = event.source_data;
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::PricePoolReplaced::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "PRICE_POOL_REPLACED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.token0 = event.token0;
+                    item.token1 = event.token1;
+                    item.previous_source_type = event.previous_source_type.to_i32().max(0) as u32;
+                    item.source_type = event.new_source_type.to_i32().max(0) as u32;
+                    item.data = event.source_data;
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::PricePoolRemoved::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "PRICE_POOL_REMOVED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::RouteAdded::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "ROUTE_ADDED");
+                    item.token0 = event.token0;
+                    item.token1 = event.token1;
+                    item.route_hash = event.route_hash.to_vec();
+                    item.pool_ids = event.pool_ids.into_iter().map(|value| value.to_vec()).collect();
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::RouteReplaced::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "ROUTE_REPLACED");
+                    item.token0 = event.token0;
+                    item.token1 = event.token1;
+                    item.route_hash = event.route_hash.to_vec();
+                    item.pool_ids = event.pool_ids.into_iter().map(|value| value.to_vec()).collect();
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::RouteRemoved::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "ROUTE_REMOVED");
+                    item.token0 = event.token0;
+                    item.token1 = event.token1;
+                    item
+                } else if let Some(event) = abi::nutbox_router::events::SwapExecuted::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "ROUTER_SWAP_EXECUTED");
+                    item.account = event.caller;
+                    item.token0 = event.token_in;
+                    item.token1 = event.token_out;
+                    item.amount = event.amount_in.to_string();
+                    item.secondary_amount = event.amount_out.to_string();
+                    item.recipient = event.recipient;
+                    item
+                } else {
+                    continue;
+                }
+            } else if log.address == NUTBOX_COMMUNITY_FEE_HOOK {
+                if let Some(event) = abi::nutbox_community_fee_hook::events::PoolCommunitySet::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "POOL_COMMUNITY_SET");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.community = event.community;
+                    item.token = event.token;
+                    item.calculator = event.calculator;
+                    item
+                } else if let Some(event) = abi::nutbox_community_fee_hook::events::PoolCommunityRemoved::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "POOL_COMMUNITY_REMOVED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item
+                } else if let Some(event) = abi::nutbox_community_fee_hook::events::CommunityFeeCollected::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "COMMUNITY_FEE_COLLECTED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.token = event.token;
+                    item.amount = event.amount.to_string();
+                    item.flag = event.token_was_input;
+                    item
+                } else if let Some(event) = abi::nutbox_community_fee_hook::events::CommunityFeesInjected::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "COMMUNITY_FEES_INJECTED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.community = event.community;
+                    item.token = event.token;
+                    item.amount = event.amount.to_string();
+                    item
+                } else if let Some(event) = abi::nutbox_community_fee_hook::events::CommunityFeesInjectionFailed::match_and_decode(log) {
+                    let mut item = new_v11_event(&blk, &rcpt.transaction, log, "COMMUNITY_FEES_INJECTION_FAILED");
+                    item.pool_id = event.pool_id.to_vec();
+                    item.community = event.community;
+                    item.token = event.token;
+                    item.amount = event.amount.to_string();
+                    item.data = event.reason;
+                    item
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            };
+            output.events.push(item);
+        }
+    }
+    Ok(output)
+}
+
+fn new_index_broker_event(
+    blk: &eth::Block,
+    rcpt: &eth::TransactionTrace,
+    log: &eth::Log,
+    kind: &str,
+) -> contract::IndexBrokerEvent {
+    contract::IndexBrokerEvent {
+        kind: kind.into(),
+        evt_tx_hash: Hex(&rcpt.hash).to_string(),
+        evt_index: log.block_index,
+        evt_block_time: Some(blk.timestamp().to_owned()),
+        evt_block_number: blk.number,
+        evt_ordinal: log.ordinal,
+        evt_block_hash: blk.hash.clone(),
+        source: log.address.clone(),
+        ..Default::default()
+    }
+}
+
+#[derive(Clone, Default)]
+struct IndexBrokerCreationMeta {
+    level_thresholds: Vec<String>,
+    level_weights: Vec<String>,
+    price_source_data: Vec<u8>,
+}
+
+fn decode_index_broker_creation_meta(meta: &[u8]) -> Option<IndexBrokerCreationMeta> {
+    use ethabi::ParamType::{Address, Array, Bool, Bytes, String as AbiString, Tuple, Uint};
+
+    let pool_config = Tuple(vec![
+        AbiString,
+        Address,
+        Address,
+        Address,
+        Array(Box::new(Uint(256))),
+        Array(Box::new(Uint(256))),
+        Uint(256),
+        Uint(256),
+        Uint(256),
+        Uint(256),
+        Uint(256),
+        Uint(16),
+        Bytes,
+        Bytes,
+        Bool,
+        Bool,
+        Array(Box::new(Address)),
+        Array(Box::new(Uint(256))),
+    ]);
+    let mut decoded = ethabi::decode(&[pool_config], meta).ok()?;
+    let values = decoded.pop()?.into_tuple()?;
+    let level_thresholds = values
+        .get(4)?
+        .clone()
+        .into_array()?
+        .into_iter()
+        .map(|value| value.into_uint().map(|number| number.to_string()))
+        .collect::<Option<Vec<_>>>()?;
+    let level_weights = values
+        .get(5)?
+        .clone()
+        .into_array()?
+        .into_iter()
+        .map(|value| value.into_uint().map(|number| number.to_string()))
+        .collect::<Option<Vec<_>>>()?;
+    let amm_config = values.get(12)?.clone().into_bytes()?;
+    let mut amm_decoded = ethabi::decode(
+        &[Tuple(vec![Uint(16), Uint(16), Uint(8), Bytes, Address, Address])],
+        &amm_config,
+    )
+    .ok()?;
+    let amm_values = amm_decoded.pop()?.into_tuple()?;
+    let price_source_data = amm_values.get(3)?.clone().into_bytes()?;
+
+    Some(IndexBrokerCreationMeta {
+        level_thresholds,
+        level_weights,
+        price_source_data,
+    })
+}
+
+#[substreams::handlers::map]
+fn map_index_broker_factory_events(
+    blk: eth::Block,
+) -> Result<contract::IndexBrokerEvents, substreams::errors::Error> {
+    let mut output = contract::IndexBrokerEvents::default();
+    for rcpt in blk.receipts() {
+        let mut creation_meta_by_pool = std::collections::BTreeMap::new();
+        let mut creation_metas = rcpt
+            .transaction
+            .calls
+            .iter()
+            .filter(|call| call.address == INDEX_BROKER_FACTORY)
+            .filter(|call| !call.status_failed && !call.status_reverted && !call.state_reverted)
+            .filter(|call| abi::index_broker_factory::functions::CreatePool::match_call(call))
+            .filter_map(|call| {
+                abi::index_broker_factory::functions::CreatePool::decode(call).ok()
+            })
+            .filter_map(|call| decode_index_broker_creation_meta(&call.meta));
+        for log in rcpt
+            .receipt
+            .logs
+            .iter()
+            .filter(|log| log.address == INDEX_BROKER_FACTORY)
+        {
+            let item = if let Some(event) =
+                abi::index_broker_factory::events::IndexBrokerNftCreated::match_and_decode(log)
+            {
+                let mut item = new_index_broker_event(
+                    &blk,
+                    &rcpt.transaction,
+                    log,
+                    "INDEX_BROKER_NFT_POOL_CREATED",
+                );
+                item.factory = log.address.clone();
+                item.pool = event.pool.clone();
+                item.community = event.community;
+                item.admin = event.admin;
+                item.account = item.admin.clone();
+                item.nft_template = event.nft_template;
+                item.asset = item.nft_template.clone();
+                item.minimum_index_mining_weight = rcpt
+                    .transaction
+                    .calls
+                    .iter()
+                    .find(|call| {
+                        call.address == event.community_token
+                            && call.input.get(0..4) == Some(&[0x31, 0x3c, 0xe5, 0x67])
+                            && !call.status_failed
+                            && !call.status_reverted
+                            && !call.state_reverted
+                    })
+                    .and_then(|call| call.return_data.get(call.return_data.len().saturating_sub(32)..))
+                    .map(num_bigint::BigUint::from_bytes_be)
+                    .and_then(|decimals| decimals.to_u32())
+                    .filter(|decimals| *decimals <= 77)
+                    .map(|decimals| num_bigint::BigUint::from(10u8).pow(decimals).to_string())
+                    .unwrap_or_default();
+                item.community_token = event.community_token;
+                item.renderer = event.renderer;
+                item.funds_receiver = event.funds_receiver;
+                item.name = event.name;
+                item.symbol = event.symbol;
+                item.community_token_price = event.community_token_price.to_string();
+                item.activation_amount = event.index_mining_activation_token_amount.to_string();
+                item.recommit_price = event.recommit_price.to_string();
+                item.native_price = event.native_price.to_string();
+                item.max_supply = event.max_supply.to_string();
+                item.amount = item.max_supply.clone();
+                item.secondary_amount = item.community_token_price.clone();
+                item.tertiary_amount = item.native_price.clone();
+                item.ratio = event.referral_bps.to_i32().max(0) as u32;
+                item.lock_whitelist_slots = event.lock_whitelist_slots;
+                item.reroll_enabled = event.reroll_enabled;
+                item.total_whitelist_allocation = event.total_whitelist_allocation.to_string();
+                if let Some(meta) = creation_metas.next() {
+                    item.level_thresholds = meta.level_thresholds.clone();
+                    item.level_weights = meta.level_weights.clone();
+                    item.price_source_data = meta.price_source_data.clone();
+                    creation_meta_by_pool.insert(event.pool, meta);
+                }
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::IndexBrokerNftammCreated::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_AMM_CREATED");
+                item.factory = log.address.clone();
+                item.pool = event.pool.clone();
+                item.amm = event.amm_vault;
+                item.pump = event.pump;
+                item.nutbox_router = event.nutbox_router;
+                item.ratio = event.price_source_type.to_i32().max(0) as u32;
+                item.price_quote_token = event.price_quote_token;
+                item.flag = event.active;
+                item.normal_fee_bps = event.normal_fee_bps.to_i32().max(0) as u32;
+                item.specific_fee_bps = event.specific_fee_bps.to_i32().max(0) as u32;
+                item.index_token = event.index_token.clone();
+                item.asset = event.index_token;
+                if let Some(meta) = creation_meta_by_pool.get(&event.pool) {
+                    item.price_source_data = meta.price_source_data.clone();
+                }
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::IndexBasketRouterSelected::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_BASKET_ROUTER_SELECTED");
+                item.pool = event.pool;
+                item.asset = event.index_token;
+                item.amount = event.version.to_string();
+                item.account = event.basket_swap_router;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::BasketSwapRouterChanged::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_BASKET_SWAP_ROUTER_CHANGED");
+                item.factory = log.address.clone();
+                item.amount = event.version.to_string();
+                item.secondary_account = event.previous_router;
+                item.account = event.new_router;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::DefaultIndexTokenChanged::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_DEFAULT_INDEX_TOKEN_CHANGED");
+                item.factory = log.address.clone();
+                item.secondary_account = event.previous_token;
+                item.account = event.new_token;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::PlatformFeeBpsChanged::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_PLATFORM_FEE_BPS_CHANGED");
+                item.factory = log.address.clone();
+                item.amount = event.previous_bps.to_string();
+                item.secondary_amount = event.new_bps.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::PumpAdded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_PUMP_ADDED");
+                item.factory = log.address.clone();
+                item.account = event.pump;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::PumpRemoved::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_PUMP_REMOVED");
+                item.factory = log.address.clone();
+                item.account = event.pump;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::NftTemplateAdded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_TEMPLATE_ADDED");
+                item.factory = log.address.clone();
+                item.asset = event.template;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::NftTemplateRemoved::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_TEMPLATE_REMOVED");
+                item.factory = log.address.clone();
+                item.asset = event.template;
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::ReservedCollectionNameAdded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_RESERVED_NAME_ADDED");
+                item.factory = log.address.clone();
+                item.data = event.name.into_bytes();
+                item
+            } else if let Some(event) = abi::index_broker_factory::events::ReservedCollectionNameRemoved::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_RESERVED_NAME_REMOVED");
+                item.factory = log.address.clone();
+                item.data = event.name.into_bytes();
+                item
+            } else {
+                continue;
+            };
+            output.events.push(item);
+        }
+    }
+    Ok(output)
+}
+
+#[substreams::handlers::store]
+fn store_index_broker_pools(events: contract::IndexBrokerEvents, store: StoreSetInt64) {
+    for event in events.events {
+        if event.kind == "INDEX_BROKER_NFT_POOL_CREATED" {
+            store.set(event.evt_ordinal, token_key(&event.pool), &1);
+        }
+    }
+}
+
+#[substreams::handlers::store]
+fn store_index_broker_amms(events: contract::IndexBrokerEvents, store: StoreSetString) {
+    for event in events.events {
+        if event.kind == "INDEX_BROKER_NFT_AMM_CREATED" {
+            store.set(
+                event.evt_ordinal,
+                token_key(&event.amm),
+                &prefixed_hex(&event.pool),
+            );
+        }
+    }
+}
+
+#[substreams::handlers::map]
+fn map_index_broker_pool_events(
+    blk: eth::Block,
+    discoveries: contract::IndexBrokerEvents,
+    pools: StoreGetInt64,
+) -> Result<contract::IndexBrokerEvents, substreams::errors::Error> {
+    let mut output = contract::IndexBrokerEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let known = pools.has_first(&token_key(&log.address))
+                || discoveries.events.iter().any(|event| {
+                    event.kind == "INDEX_BROKER_NFT_POOL_CREATED"
+                        && event.pool == log.address
+                        && event.evt_ordinal < log.ordinal
+                });
+            if !known {
+                continue;
+            }
+            let mut item = if let Some(event) = abi::index_broker_pool::events::NftMinted::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_MINTED");
+                item.token_id = event.token_id.to_string();
+                item.secondary_token_id = event.referrer_token_id.to_string();
+                item.account = event.buyer;
+                item.amount = event.community_token_amount.to_string();
+                item.secondary_amount = event.native_amount.to_string();
+                item.flag = event.whitelist_mint;
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::WhitelistAllowanceConsumed::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_WHITELIST_ALLOWANCE_CONSUMED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.account;
+                item.amount = event.minted.to_string();
+                item.secondary_amount = event.allowance.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::NativePaymentRefunded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_MINT_NATIVE_REFUNDED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.account;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::PlatformFeePaid::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_MINT_PLATFORM_FEE_PAID");
+                item.token_id = event.token_id.to_string();
+                item.account = event.receiver;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::NftReferralRecorded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_REFERRAL_RECORDED");
+                item.token_id = event.referrer_token_id.to_string();
+                item.secondary_token_id = event.child_token_id.to_string();
+                item.account = event.commission_receiver;
+                item.amount = event.commission_amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::NftLevelUp::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_LEVEL_UP");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.previous_level = event.previous_level.to_i32().max(0) as u32;
+                item.level = event.new_level.to_i32().max(0) as u32;
+                item.amount = event.previous_weight.to_string();
+                item.secondary_amount = event.new_weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningActivated::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_ACTIVATED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.token_amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningDeactivated::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_DEACTIVATED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningStaked::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_STAKED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.token_amount.to_string();
+                item.secondary_amount = event.previous_weight.to_string();
+                item.tertiary_amount = event.new_weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningUnstaked::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_UNSTAKED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.token_amount.to_string();
+                item.secondary_amount = event.previous_weight.to_string();
+                item.tertiary_amount = event.new_weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningWeightUpgraded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_WEIGHT_UPGRADED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.token_amount.to_string();
+                item.secondary_amount = event.previous_weight.to_string();
+                item.tertiary_amount = event.new_weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexMiningWeightReduced::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_MINING_WEIGHT_REDUCED");
+                item.token_id = event.token_id.to_string();
+                item.amount = event.previous_weight.to_string();
+                item.secondary_amount = event.new_weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexRewardsInjected::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_REWARDS_INJECTED");
+                item.account = event.caller;
+                item.amount = event.amount.to_string();
+                item.secondary_amount = event.distributed.to_string();
+                item.tertiary_amount = event.queued.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexRewardsClaimed::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_REWARDS_CLAIMED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::IndexHolderFeesHarvested::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_HOLDER_FEES_HARVESTED");
+                item.account = event.caller;
+                item.amount = event.wrapped_native_amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::RevealCommitted::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_REVEAL_COMMITTED");
+                item.token_id = event.token_id.to_string();
+                item.account = event.owner;
+                item.amount = event.reveal_round.to_string();
+                item.secondary_amount = event.reveal_block.to_string();
+                item.tertiary_amount = event.price.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::NftRevealed::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_REVEALED");
+                item.token_id = event.token_id.to_string();
+                item.amount = event.reveal_round.to_string();
+                item.secondary_amount = event.seed.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::MiningWeightMoved::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_MINING_WEIGHT_MOVED");
+                item.token_id = event.token_id.to_string();
+                item.secondary_account = event.from;
+                item.account = event.to;
+                item.amount = event.weight.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::FundsReceiverChanged::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_FUNDS_RECEIVER_CHANGED");
+                item.secondary_account = event.previous_receiver;
+                item.account = event.new_receiver;
+                item
+            } else if let Some(event) = abi::index_broker_pool::events::Transfer::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_TRANSFERRED");
+                item.token_id = event.token_id.to_string();
+                item.secondary_account = event.from;
+                item.account = event.to;
+                item
+            } else {
+                continue;
+            };
+            item.pool = log.address.clone();
+            output.events.push(item);
+        }
+    }
+    Ok(output)
+}
+
+#[substreams::handlers::map]
+fn map_index_broker_amm_events(
+    blk: eth::Block,
+    discoveries: contract::IndexBrokerEvents,
+    amms: StoreGetString,
+) -> Result<contract::IndexBrokerEvents, substreams::errors::Error> {
+    let mut output = contract::IndexBrokerEvents::default();
+    for rcpt in blk.receipts() {
+        for log in &rcpt.receipt.logs {
+            let key = token_key(&log.address);
+            let discovered = discoveries.events.iter().find(|event| {
+                event.kind == "INDEX_BROKER_NFT_AMM_CREATED"
+                    && event.amm == log.address
+                    && event.evt_ordinal < log.ordinal
+            });
+            let pool = discovered
+                .map(|event| event.pool.clone())
+                .or_else(|| {
+                    amms.get_at(log.ordinal, &key)
+                        .and_then(|value| hex::decode(value.trim_start_matches("0x")).ok())
+                });
+            let Some(pool) = pool else {
+                continue;
+            };
+
+            let mut item = if let Some(event) = abi::index_broker_amm::events::AmmActivated::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_AMM_ACTIVATED");
+                item.account = event.activator;
+                item.ratio = event.price_source_type.to_i32().max(0) as u32;
+                item.data = event.price_source_data;
+                item.flag = event.official_tag_ai_token;
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::NftSold::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_SOLD");
+                item.token_id = event.token_id.to_string();
+                item.account = event.seller;
+                item.amount = event.token_amount.to_string();
+                item.secondary_amount = event.trading_fee.to_string();
+                item.tertiary_amount = event.platform_fee.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::NftBought::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NFT_BOUGHT");
+                item.token_id = event.token_id.to_string();
+                item.account = event.buyer;
+                item.amount = event.token_amount.to_string();
+                item.secondary_amount = event.trading_fee.to_string();
+                item.tertiary_amount = event.platform_fee.to_string();
+                item.flag = event.specific;
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::NativeFeeReceived::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_NATIVE_FEE_RECEIVED");
+                item.account = event.payer;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::NativeFeeRefunded::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_AMM_NATIVE_FEE_REFUNDED");
+                item.account = event.payer;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::PlatformFeePaid::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_AMM_PLATFORM_FEE_PAID");
+                item.account = event.payer;
+                item.secondary_account = event.receiver;
+                item.amount = event.amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::IndexTokenPurchased::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_TOKEN_PURCHASED");
+                item.account = event.caller;
+                item.asset = event.index_token;
+                item.amount = event.native_amount.to_string();
+                item.secondary_amount = event.caller_reward.to_string();
+                item.tertiary_amount = event.index_amount.to_string();
+                item
+            } else if let Some(event) = abi::index_broker_amm::events::IndexHolderFeesConverted::match_and_decode(log) {
+                let mut item = new_index_broker_event(&blk, &rcpt.transaction, log, "INDEX_BROKER_INDEX_HOLDER_FEES_CONVERTED");
+                item.amount = event.wrapped_native_amount.to_string();
+                item
+            } else {
+                continue;
+            };
+            item.pool = pool;
+            item.amm = log.address.clone();
+            output.events.push(item);
+        }
+    }
+    Ok(output)
+}
+
+#[substreams::handlers::store]
+fn store_index_broker_indexes(
+    factory_events: contract::IndexBrokerEvents,
+    pool_events: contract::IndexBrokerEvents,
+    amm_events: contract::IndexBrokerEvents,
+    store: StoreAddInt64,
+) {
+    let mut ordinals = factory_events
+        .events
+        .into_iter()
+        .chain(pool_events.events)
+        .chain(amm_events.events)
+        .map(|event| event.evt_ordinal)
+        .collect::<Vec<_>>();
+    ordinals.sort_unstable();
+    for ordinal in ordinals {
+        store.add(ordinal, "index_broker_event", 1);
+    }
+}
+
+#[substreams::handlers::store]
+fn store_index_broker_accounts(
+    pool_events: contract::IndexBrokerEvents,
+    amm_events: contract::IndexBrokerEvents,
+    store: StoreSetIfNotExistsInt64,
+) {
+    let mut candidates = pool_events
+        .events
+        .into_iter()
+        .chain(amm_events.events)
+        .flat_map(|event| {
+            let mut accounts = Vec::new();
+            if !event.pool.is_empty() && !event.account.is_empty() && event.account.iter().any(|v| *v != 0) {
+                accounts.push((event.evt_ordinal, event.pool.clone(), event.account));
+            }
+            if !event.pool.is_empty()
+                && !event.secondary_account.is_empty()
+                && event.secondary_account.iter().any(|v| *v != 0)
+            {
+                accounts.push((event.evt_ordinal, event.pool, event.secondary_account));
+            }
+            accounts
+        })
+        .collect::<Vec<_>>();
+    candidates.sort_by_key(|candidate| candidate.0);
+    for (ordinal, pool, account) in candidates {
+        let key = format!("{}|{}", prefixed_hex(&pool), prefixed_hex(&account));
+        store.set_if_not_exists(ordinal, key, &(ordinal as i64));
+    }
+}
+
+struct ImportedCall {
+    venue: &'static str,
+    is_buy: bool,
+    token: Vec<u8>,
+    recipient: Vec<u8>,
+    sellsman: Vec<u8>,
+    pool_manager: Vec<u8>,
+}
+
+fn v4_token(pool_key: &(Vec<u8>, Vec<u8>, BigInt, BigInt, Vec<u8>)) -> Option<Vec<u8>> {
+    let is_native = |address: &[u8]| address.iter().all(|value| *value == 0) || address == RH_WETH;
+    match (is_native(&pool_key.0), is_native(&pool_key.1)) {
+        (true, false) => Some(pool_key.1.clone()),
+        (false, true) => Some(pool_key.0.clone()),
+        _ => None,
+    }
+}
+
+fn decode_imported_call(call: &eth::Call) -> Option<ImportedCall> {
+    if let Some(event) = abi::tagai_swap_wrapper::functions::BuyToken::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V2",
+            is_buy: true,
+            token: event.path.last()?.clone(),
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: Vec::new(),
+        });
+    }
+    if let Some(event) = abi::tagai_swap_wrapper::functions::SellToken::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V2",
+            is_buy: false,
+            token: event.path.first()?.clone(),
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: Vec::new(),
+        });
+    }
+    if let Some(event) = abi::tagai_swap_wrapper::functions::BuyTokenV3::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V3",
+            is_buy: true,
+            token: event.token,
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: Vec::new(),
+        });
+    }
+    if let Some(event) = abi::tagai_swap_wrapper::functions::SellTokenV3::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V3",
+            is_buy: false,
+            token: event.token,
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: Vec::new(),
+        });
+    }
+    if let Some(event) = abi::tagai_swap_wrapper::functions::BuyTokenV4::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V4",
+            is_buy: true,
+            token: v4_token(&event.pool_key)?,
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: event.pool_manager,
+        });
+    }
+    if let Some(event) = abi::tagai_swap_wrapper::functions::SellTokenV4::match_and_decode(call) {
+        return Some(ImportedCall {
+            venue: "V4",
+            is_buy: false,
+            token: v4_token(&event.pool_key)?,
+            recipient: event.to,
+            sellsman: event.sellsman,
+            pool_manager: event.pool_manager,
+        });
+    }
+    None
+}
+
+fn imported_swap_token_amount(
+    logs: &[eth::Log],
+    venue: &str,
+    is_buy: bool,
+    pool_manager: &[u8],
+) -> Option<BigInt> {
+    let matching = logs
+        .iter()
+        .filter(|log| match venue {
+            "V2" => log.topics.first().map(Vec::as_slice) == Some(V2_SWAP_TOPIC.as_slice()),
+            "V3" => log.topics.first().map(Vec::as_slice) == Some(V3_SWAP_TOPIC.as_slice()),
+            "V4" => {
+                log.address == pool_manager
+                    && log.topics.first().map(Vec::as_slice) == Some(SWAP_TOPIC.as_slice())
+            }
+            _ => false,
+        })
+        .collect::<Vec<_>>();
+    if venue == "V2" {
+        let log = if is_buy { matching.last()? } else { matching.first()? };
+        if log.data.len() < 128 { return None; }
+        let slots = (0..4)
+            .map(|index| BigInt::from_unsigned_bytes_be(&log.data[index * 32..index * 32 + 32]))
+            .collect::<Vec<_>>();
+        return if is_buy {
+            slots[2..].iter().max().cloned()
+        } else {
+            slots[..2].iter().max().cloned()
+        };
+    }
+    let log = matching.first()?;
+    if log.data.len() < 64 { return None; }
+    let amount0 = BigInt::from_signed_bytes_be(&log.data[0..32]);
+    let amount1 = BigInt::from_signed_bytes_be(&log.data[32..64]);
+    let zero = BigInt::from(0);
+    if venue == "V3" {
+        if is_buy {
+            [amount0, amount1].into_iter().filter(|amount| amount < &zero).map(|amount| -amount).max()
+        } else {
+            [amount0, amount1].into_iter().filter(|amount| amount > &zero).max()
+        }
+    } else if is_buy {
+        [amount0, amount1].into_iter().filter(|amount| amount > &zero).max()
+    } else {
+        [amount0, amount1].into_iter().filter(|amount| amount < &zero).map(|amount| -amount).max()
+    }
+}
+
+fn call_value(call: &eth::Call) -> BigInt {
+    call.value
+        .as_ref()
+        .map(|value| BigInt::from_unsigned_bytes_be(&value.bytes))
+        .unwrap_or_else(|| BigInt::from(0))
+}
+
+#[substreams::handlers::store]
+fn store_ipshare_subjects(events: contract::IpShareEvents, store: StoreSetInt64) {
+    for event in events.creates {
+        store.set(event.evt_ordinal, prefixed_hex(&event.subject), &1);
+    }
+}
+
+#[substreams::handlers::store]
+fn store_imported_market_deployers(events: contract::V11ProtocolEvents, store: StoreSetString) {
+    for event in events.events {
+        if matches!(
+            event.kind.as_str(),
+            "IMPORTED_MARKET_REGISTERED" | "IMPORTED_COMMUNITY_RECORDED"
+        ) {
+            store.set(
+                event.evt_ordinal,
+                token_key(&event.token),
+                &prefixed_hex(&event.account),
+            );
+        }
+    }
+}
+
+#[substreams::handlers::map]
+fn map_imported_trade_events(
+    blk: eth::Block,
+    ipshare_subjects: StoreGetInt64,
+    imported_market_deployers: StoreGetString,
+) -> Result<contract::ImportedTradeEvents, substreams::errors::Error> {
+    let mut output = contract::ImportedTradeEvents::default();
+    for rcpt in blk.receipts() {
+        for call in rcpt
+            .transaction
+            .calls
+            .iter()
+            .filter(|call| call.address == TAGAI_SWAP_WRAPPER)
+            .filter(|call| !call.status_failed && !call.status_reverted && !call.state_reverted)
+        {
+            let Some(decoded) = decode_imported_call(call) else { continue; };
+            let Some(swap_amount) = imported_swap_token_amount(
+                &rcpt.receipt.logs,
+                decoded.venue,
+                decoded.is_buy,
+                &decoded.pool_manager,
+            ) else { continue; };
+            let token_fee = rcpt
+                .receipt
+                .logs
+                .iter()
+                .filter(|log| log.address == TAGAI_SWAP_WRAPPER)
+                .filter_map(abi::tagai_swap_wrapper::events::NutboxTokenFeeAccrued::match_and_decode)
+                .filter(|event| event.token == decoded.token)
+                .fold(BigInt::from(0), |total, event| total + event.amount);
+            let token_amount = if decoded.is_buy {
+                &swap_amount - &token_fee
+            } else {
+                &swap_amount + &token_fee
+            };
+            let native_amount = if decoded.is_buy {
+                call_value(call)
+            } else {
+                rcpt.transaction
+                    .calls
+                    .iter()
+                    .filter(|inner| {
+                        inner.caller == TAGAI_SWAP_WRAPPER
+                            && inner.address == decoded.recipient
+                            && !inner.status_failed
+                            && !inner.status_reverted
+                            && !inner.state_reverted
+                    })
+                    .fold(BigInt::from(0), |total, inner| total + call_value(inner))
+            };
+            let sellsman = if decoded.sellsman.iter().any(|value| *value != 0)
+                && ipshare_subjects.has_first(&prefixed_hex(&decoded.sellsman))
+            {
+                decoded.sellsman
+            } else {
+                imported_market_deployers
+                    .get_at(call.end_ordinal, &token_key(&decoded.token))
+                    .and_then(|value| hex::decode(value.trim_start_matches("0x")).ok())
+                    .unwrap_or_else(|| WRAPPER_FEE_ADDRESS.to_vec())
+            };
+            output.trades.push(contract::ImportedTrade {
+                venue: decoded.venue.into(),
+                evt_tx_hash: Hex(&rcpt.transaction.hash).to_string(),
+                evt_index: call.index,
+                evt_block_time: Some(blk.timestamp().to_owned()),
+                evt_block_number: blk.number,
+                evt_ordinal: call.end_ordinal,
+                evt_block_hash: blk.hash.clone(),
+                token: decoded.token,
+                trader: call.caller.clone(),
+                sellsman,
+                recipient: decoded.recipient,
+                is_buy: decoded.is_buy,
+                token_amount: token_amount.to_string(),
+                native_amount: native_amount.to_string(),
+                nutbox_token_fee: token_fee.to_string(),
+            });
+        }
+    }
+    Ok(output)
+}
+
+#[substreams::handlers::store]
+fn store_imported_trade_indexes(events: contract::ImportedTradeEvents, store: StoreAddInt64) {
+    for event in events.trades {
+        store.add(event.evt_ordinal, "imported_trade", 1);
+    }
+}
+
 #[substreams::handlers::map]
 fn map_basket_registry_events(
     blk: eth::Block,
@@ -212,7 +1282,7 @@ fn map_basket_registry_events(
                 .receipt
                 .logs
                 .iter()
-                .filter(|candidate| candidate.address == BASKET_HOOK)
+                .filter(|candidate| is_tracked_contract(&candidate.address, &BASKET_HOOKS))
                 .filter_map(abi::basket_hook::events::BasketCreated::match_and_decode)
                 .find(|created| created.basket == event.basket)
                 .map(|created| created.salt.to_vec())
@@ -296,7 +1366,7 @@ fn map_basket_events(
             .receipt
             .logs
             .iter()
-            .filter(|log| log.address == BASKET_ROUTER)
+            .filter(|log| is_tracked_contract(&log.address, &BASKET_ROUTERS))
         {
             if let Some(event) = abi::basket_router::events::BasketBought::match_and_decode(log) {
                 router_trades.push(BasketRouterTrade {
@@ -340,7 +1410,7 @@ fn map_basket_events(
 
         for log in &rcpt.receipt.logs {
             let common_time = Some(blk.timestamp().to_owned());
-            if log.address == BASKET_HOOK {
+            if is_tracked_contract(&log.address, &BASKET_HOOKS) {
                 let decoded = if let Some(event) =
                     abi::basket_hook::events::BasketBought::match_and_decode(log)
                 {
@@ -503,9 +1573,27 @@ fn map_basket_events(
                 continue;
             }
 
-            if log.address == BASKET_REBALANCE_EXECUTOR {
+            if log.address == BASKET_REBALANCE_EXECUTOR_V1 {
+                if let Some(event) = abi::basket_rebalance::events::BasketRebalanced::match_and_decode(log) {
+                    output.rebalances.push(contract::BasketRebalance {
+                        evt_tx_hash: tx_hash.clone(),
+                        evt_index: log.block_index,
+                        evt_block_time: common_time,
+                        evt_block_number: blk.number,
+                        evt_ordinal: log.ordinal,
+                        basket: event.basket,
+                        nav_before: event.nav_before.to_string(),
+                        nav_after: event.nav_after.to_string(),
+                        sell_mask: 0,
+                        buy_mask: 0,
+                        evt_block_hash: blk.hash.clone(),
+                    });
+                }
+                continue;
+            }
+            if log.address == BASKET_REBALANCE_EXECUTOR_V3 {
                 if let Some(event) =
-                    abi::basket_rebalance::events::BasketRebalanced::match_and_decode(log)
+                    abi::basket_rebalance_v3::events::BasketRebalanced::match_and_decode(log)
                 {
                     output.rebalances.push(contract::BasketRebalance {
                         evt_tx_hash: tx_hash.clone(),
@@ -516,6 +1604,8 @@ fn map_basket_events(
                         basket: event.basket,
                         nav_before: event.nav_before.to_string(),
                         nav_after: event.nav_after.to_string(),
+                        sell_mask: event.sell_mask.to_i32().max(0) as u32,
+                        buy_mask: event.buy_mask.to_i32().max(0) as u32,
                         evt_block_hash: blk.hash.clone(),
                     });
                 }
@@ -1686,29 +2776,41 @@ fn store_token_addresses(events: contract::Events, store: StoreSetInt64) {
 fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams::errors::Error> {
     let mut output = contract::TokenEvents::default();
     for rcpt in blk.receipts() {
+        let mut pool_swaps = rcpt
+            .receipt
+            .logs
+            .iter()
+            .filter(|log| {
+                log.address == CL_POOL_MANAGER
+                    && log.topics.first().map(|topic| topic.as_slice())
+                        == Some(SWAP_TOPIC.as_slice())
+                    && log.topics.len() >= 2
+                    && log.data.len() >= 192
+            })
+            .map(|log| PoolSwap {
+                pool_id: log.topics[1].clone(),
+                amount0: BigInt::from_signed_bytes_be(&log.data[0..32]),
+                amount1: BigInt::from_signed_bytes_be(&log.data[32..64]),
+                sqrt_price: BigInt::from_unsigned_bytes_be(&log.data[64..96]),
+                log_index: log.block_index,
+                matched: false,
+            })
+            .collect::<Vec<_>>();
         for hook_log in rcpt
             .receipt
             .logs
             .iter()
-            .filter(|log| log.address == SWAP_HOOK_CONTRACT)
+            .filter(|log| is_tracked_contract(&log.address, &SWAP_HOOK_CONTRACTS))
         {
             let Some(fee) = abi::swap_hook::events::SwapFeeCollected::match_and_decode(hook_log)
             else {
                 continue;
             };
-            let Some(swap_log) = rcpt.receipt.logs.iter().find(|log| {
-                log.address == CL_POOL_MANAGER
-                    && log.topics.first().map(|t| t.as_slice()) == Some(SWAP_TOPIC.as_slice())
-                    && log.topics.get(1).map(|t| t.as_slice()) == Some(fee.pool_id.as_slice())
-            }) else {
+            let Some((amount0, amount1, sqrt_price)) =
+                take_pool_swap(&mut pool_swaps, hook_log.block_index, &fee.pool_id)
+            else {
                 continue;
             };
-            if swap_log.data.len() < 192 {
-                continue;
-            }
-            let amount0 = BigInt::from_signed_bytes_be(&swap_log.data[0..32]);
-            let amount1 = BigInt::from_signed_bytes_be(&swap_log.data[32..64]);
-            let sqrt_price = BigInt::from_unsigned_bytes_be(&swap_log.data[64..96]);
             let zero = BigInt::from(0);
             let is_buy = amount1 > zero;
             output.swap_trades.push(contract::TokenTrade {
@@ -1731,6 +2833,36 @@ fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams:
         }
     }
     Ok(output)
+}
+
+struct PoolSwap {
+    pool_id: Vec<u8>,
+    amount0: BigInt,
+    amount1: BigInt,
+    sqrt_price: BigInt,
+    log_index: u32,
+    matched: bool,
+}
+
+fn take_pool_swap(
+    candidates: &mut [PoolSwap],
+    hook_log_index: u32,
+    pool_id: &[u8],
+) -> Option<(BigInt, BigInt, BigInt)> {
+    let candidate = candidates
+        .iter_mut()
+        .filter(|candidate| {
+            !candidate.matched
+                && candidate.log_index > hook_log_index
+                && candidate.pool_id == pool_id
+        })
+        .min_by_key(|candidate| candidate.log_index)?;
+    candidate.matched = true;
+    Some((
+        candidate.amount0.clone(),
+        candidate.amount1.clone(),
+        candidate.sqrt_price.clone(),
+    ))
 }
 
 #[substreams::handlers::map]
@@ -2079,6 +3211,8 @@ fn write_basket_changes(
             .set("basket", prefixed_hex(&event.basket))
             .set("nav_before", event.nav_before)
             .set("nav_after", event.nav_after)
+            .set("sell_mask", event.sell_mask)
+            .set("buy_mask", event.buy_mask)
             .set("block_number", event.evt_block_number)
             .set("block_hash", prefixed_hex(&event.evt_block_hash))
             .set("block_timestamp", event_timestamp(event.evt_block_time))
@@ -2628,6 +3762,390 @@ fn write_nutbox_mining_changes(
     }
 }
 
+fn write_v11_protocol_changes(tables: &mut Tables, events: contract::V11ProtocolEvents) {
+    for event in events.events {
+        let timestamp = event_timestamp(event.evt_block_time.clone());
+        let pool_id = prefixed_hex(&event.pool_id);
+        let token = prefixed_hex(&event.token);
+        let token0 = prefixed_hex(&event.token0);
+        let token1 = prefixed_hex(&event.token1);
+        let community = prefixed_hex(&event.community);
+        let account = prefixed_hex(&event.account);
+        let recipient = prefixed_hex(&event.recipient);
+        let calculator = prefixed_hex(&event.calculator);
+        let route_hash = prefixed_hex(&event.route_hash);
+        let pool_ids = event
+            .pool_ids
+            .iter()
+            .map(|value| prefixed_hex(value))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        tables
+            .create_row("v11_protocol_events", event_id(&event.evt_tx_hash, event.evt_index))
+            .set("event_type", &event.kind)
+            .set("contract", prefixed_hex(&event.contract))
+            .set("pool_id", &pool_id)
+            .set("token", &token)
+            .set("token0", &token0)
+            .set("token1", &token1)
+            .set("community", &community)
+            .set("account", &account)
+            .set("recipient", &recipient)
+            .set("calculator", &calculator)
+            .set("route_hash", &route_hash)
+            .set("pool_ids", &pool_ids)
+            .set("source_type", event.source_type)
+            .set("previous_source_type", event.previous_source_type)
+            .set("amount", if event.amount.is_empty() { "0" } else { &event.amount })
+            .set("secondary_amount", if event.secondary_amount.is_empty() { "0" } else { &event.secondary_amount })
+            .set("flag", event.flag)
+            .set("data", prefixed_hex(&event.data))
+            .set("ratio0", event.ratio0)
+            .set("ratio1", event.ratio1)
+            .set("ratio2", event.ratio2)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", &event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+
+        match event.kind.as_str() {
+            "COMMUNITY_CREATED" => {
+                tables
+                    .upsert_row("v11_imported_markets", &token)
+                    .set("community", community)
+                    .set("deployer", account)
+                    .set("social_pool", pool_id)
+                    .set("calculator", calculator)
+                    .set("source", "IMPORT_HELPER")
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "IMPORTED_COMMUNITY_RECORDED" | "IMPORTED_MARKET_REGISTERED" => {
+                tables
+                    .upsert_row("v11_imported_markets", &token)
+                    .set("community", community)
+                    .set("deployer", account)
+                    .set("source", &event.kind)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "PRICE_POOL_ADDED" | "PRICE_POOL_REPLACED" => {
+                tables
+                    .upsert_row("nutbox_router_price_pools", &pool_id)
+                    .set("token0", token0)
+                    .set("token1", token1)
+                    .set("source_type", event.source_type)
+                    .set("source_data", prefixed_hex(&event.data))
+                    .set("active", true)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "PRICE_POOL_REMOVED" => {
+                tables
+                    .upsert_row("nutbox_router_price_pools", &pool_id)
+                    .set("active", false)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "ROUTE_ADDED" | "ROUTE_REPLACED" => {
+                let route_id = format!("{token0}|{token1}");
+                tables
+                    .upsert_row("nutbox_router_routes", route_id)
+                    .set("token0", token0)
+                    .set("token1", token1)
+                    .set("route_hash", route_hash)
+                    .set("pool_ids", pool_ids)
+                    .set("active", true)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "ROUTE_REMOVED" => {
+                let route_id = format!("{token0}|{token1}");
+                tables
+                    .upsert_row("nutbox_router_routes", route_id)
+                    .set("token0", token0)
+                    .set("token1", token1)
+                    .set("active", false)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "POOL_COMMUNITY_SET" => {
+                tables
+                    .upsert_row("nutbox_community_fee_pools", &pool_id)
+                    .set("community", community)
+                    .set("token", token)
+                    .set("calculator", calculator)
+                    .set("active", true)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            "POOL_COMMUNITY_REMOVED" => {
+                tables
+                    .upsert_row("nutbox_community_fee_pools", &pool_id)
+                    .set("active", false)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn write_index_broker_changes(
+    tables: &mut Tables,
+    factory_events: contract::IndexBrokerEvents,
+    pool_events: contract::IndexBrokerEvents,
+    amm_events: contract::IndexBrokerEvents,
+    indexes: StoreGetInt64,
+    accounts: StoreGetInt64,
+) {
+    fn numeric_string_array_json(values: &[String]) -> String {
+        format!(
+            "[{}]",
+            values
+                .iter()
+                .map(|value| format!("\"{value}\""))
+                .collect::<Vec<_>>()
+                .join(",")
+        )
+    }
+
+    let mut events = factory_events
+        .events
+        .into_iter()
+        .chain(pool_events.events)
+        .chain(amm_events.events)
+        .collect::<Vec<_>>();
+    events.sort_by_key(|event| event.evt_ordinal);
+
+    for event in events {
+        let timestamp = event_timestamp(event.evt_block_time.clone());
+        let source = prefixed_hex(&event.source);
+        let factory = prefixed_hex(&event.factory);
+        let pool = prefixed_hex(&event.pool);
+        let amm = prefixed_hex(&event.amm);
+        let account = prefixed_hex(&event.account);
+        let secondary_account = prefixed_hex(&event.secondary_account);
+        let asset = prefixed_hex(&event.asset);
+        let event_index = indexes
+            .get_at(event.evt_ordinal, "index_broker_event")
+            .expect("IndexBroker event index exists");
+
+        let row = tables.upsert_row(
+            "walnut_index_broker_nft_events",
+            event_id(&event.evt_tx_hash, event.evt_index),
+        );
+        row.set("entity_index", event_index)
+            .set("event_type", &event.kind)
+            .set("source", &source)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", &event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        if !event.factory.is_empty() { row.set("factory", &factory); }
+        if !event.pool.is_empty() { row.set("pool", &pool); }
+        if !event.amm.is_empty() { row.set("amm", &amm); }
+        if !event.token_id.is_empty() { row.set("token_id", &event.token_id); }
+        if !event.secondary_token_id.is_empty() { row.set("secondary_token_id", &event.secondary_token_id); }
+        if !event.account.is_empty() { row.set("account", &account); }
+        if !event.secondary_account.is_empty() { row.set("secondary_account", &secondary_account); }
+        if !event.asset.is_empty() { row.set("asset", &asset); }
+        if !event.amount.is_empty() { row.set("amount", &event.amount); }
+        if !event.secondary_amount.is_empty() { row.set("secondary_amount", &event.secondary_amount); }
+        if !event.tertiary_amount.is_empty() { row.set("tertiary_amount", &event.tertiary_amount); }
+        if event.ratio != 0 { row.set("ratio", event.ratio); }
+        if event.level != 0 { row.set("level", event.level); }
+        if event.previous_level != 0 { row.set("previous_level", event.previous_level); }
+        if event.flag { row.set("flag", true); }
+        if !event.data.is_empty() {
+            row.set("data", prefixed_hex(&event.data));
+        } else if !event.price_source_data.is_empty() {
+            row.set("data", prefixed_hex(&event.price_source_data));
+        }
+
+        if event.source == INDEX_BROKER_FACTORY {
+            let factory_row = tables.upsert_row("walnut_index_broker_nft_factories", &source);
+            factory_row
+                .set("entity_index", 1)
+                .set("default_index_token", prefixed_hex(&INDEX_BROKER_DEFAULT_INDEX))
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+            if event.kind == "INDEX_BROKER_BASKET_SWAP_ROUTER_CHANGED" {
+                factory_row
+                    .set("creation_block", event.evt_block_number)
+                    .set("creation_transaction_hash", &event.evt_tx_hash)
+                    .set("created_at", timestamp);
+            }
+        }
+
+        if event.kind == "INDEX_BROKER_NFT_POOL_CREATED" {
+            let kind = if event.nft_template == INDEX_BROKER_STAKE_TEMPLATE {
+                "STAKE"
+            } else {
+                "BURN"
+            };
+            tables
+                .upsert_row("walnut_index_broker_nft_pools", &pool)
+                .set("entity_index", event_index)
+                .set("factory", &factory)
+                .set("community", prefixed_hex(&event.community))
+                .set("admin", prefixed_hex(&event.admin))
+                .set("nft_template", prefixed_hex(&event.nft_template))
+                .set("nft_template_kind", kind)
+                .set("community_token", prefixed_hex(&event.community_token))
+                .set("index_mining_token", prefixed_hex(&event.community_token))
+                .set("renderer", prefixed_hex(&event.renderer))
+                .set("funds_receiver", prefixed_hex(&event.funds_receiver))
+                .set("name", &event.name)
+                .set("symbol", &event.symbol)
+                .set("community_token_price", &event.community_token_price)
+                .set("index_mining_activation_token_amount", &event.activation_amount)
+                .set("recommit_price", &event.recommit_price)
+                .set("native_price", &event.native_price)
+                .set("max_supply", &event.max_supply)
+                .set("referral_bps", event.ratio)
+                .set("lock_whitelist_slots", event.lock_whitelist_slots)
+                .set("reroll_enabled", event.reroll_enabled)
+                .set("total_whitelist_allocation", &event.total_whitelist_allocation)
+                .set("minimum_index_mining_weight", if event.minimum_index_mining_weight.is_empty() {
+                    "0"
+                } else {
+                    &event.minimum_index_mining_weight
+                })
+                .set("level_thresholds", numeric_string_array_json(&event.level_thresholds))
+                .set("level_weights", numeric_string_array_json(&event.level_weights))
+                .set("creation_block", event.evt_block_number)
+                .set("creation_block_hash", prefixed_hex(&event.evt_block_hash))
+                .set("creation_transaction_hash", &event.evt_tx_hash)
+                .set("creation_log_index", event.evt_index)
+                .set("created_at", timestamp)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+            tables
+                .upsert_row("walnut_pools", &pool)
+                .set("entity_index", event_index)
+                .set("pool_index", 0)
+                .set("created_at", timestamp)
+                .set("status", "OPEN")
+                .set("name", &event.name)
+                .set("pool_factory", &factory)
+                .set("community", prefixed_hex(&event.community))
+                .set("asset", prefixed_hex(&event.community_token))
+                .set("pool_type", "INDEX_BROKER_NFT");
+            tables
+                .upsert_row("walnut_index_broker_nft_factories", &factory)
+                .add("pool_count", 1);
+        } else if event.kind == "INDEX_BROKER_NFT_AMM_CREATED" {
+            tables
+                .upsert_row("walnut_index_broker_nft_amms", &amm)
+                .set("entity_index", event_index)
+                .set("factory", &factory)
+                .set("pool", &pool)
+                .set("pump", prefixed_hex(&event.pump))
+                .set("nutbox_router", prefixed_hex(&event.nutbox_router))
+                .set("price_quote_token", prefixed_hex(&event.price_quote_token))
+                .set("index_token", prefixed_hex(&event.index_token))
+                .set("price_source_type", event.ratio)
+                .set("active", event.flag)
+                .set("normal_fee_bps", event.normal_fee_bps)
+                .set("specific_fee_bps", event.specific_fee_bps)
+                .set("price_source_data", prefixed_hex(&event.price_source_data))
+                .set("creation_block", event.evt_block_number)
+                .set("creation_transaction_hash", &event.evt_tx_hash)
+                .set("creation_log_index", event.evt_index)
+                .set("created_at", timestamp)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+            tables
+                .upsert_row("walnut_index_broker_nft_pools", &pool)
+                .set("amm", &amm)
+                .set("index_token", prefixed_hex(&event.index_token))
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+        } else if event.kind == "INDEX_BROKER_INDEX_BASKET_ROUTER_SELECTED" {
+            tables
+                .upsert_row("walnut_index_broker_nft_pools", &pool)
+                .set("index_token", &asset)
+                .set("index_basket_version", &event.amount)
+                .set("basket_swap_router", &account)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+        } else if event.kind == "INDEX_BROKER_NFT_MINTED" {
+            let token_key = format!("{pool}:{}", event.token_id);
+            tables
+                .upsert_row("walnut_index_broker_nft_tokens", token_key)
+                .set("entity_index", event_index)
+                .set("pool", &pool)
+                .set("token_id", &event.token_id)
+                .set("owner", &account)
+                .set("buyer", &account)
+                .set("whitelist_mint", event.flag)
+                .set("referrer_token_id", if event.secondary_token_id.is_empty() { "0" } else { &event.secondary_token_id })
+                .set("community_token_amount", &event.amount)
+                .set("native_amount", &event.secondary_amount)
+                .set("creation_block", event.evt_block_number)
+                .set("creation_transaction_hash", &event.evt_tx_hash)
+                .set("creation_log_index", event.evt_index)
+                .set("created_at", timestamp)
+                .set("updated_block", event.evt_block_number)
+                .set("updated_at", timestamp);
+        }
+
+        for candidate in [(&event.account, &account), (&event.secondary_account, &secondary_account)] {
+            if candidate.0.is_empty() || candidate.0.iter().all(|value| *value == 0) || event.pool.is_empty() {
+                continue;
+            }
+            let key = format!("{pool}|{}", candidate.1);
+            if accounts.get_at(event.evt_ordinal, &key) == Some(event.evt_ordinal as i64) {
+                tables
+                    .upsert_row("walnut_index_broker_nft_accounts", format!("{pool}:{}", candidate.1))
+                    .set("entity_index", event.evt_ordinal as i64)
+                    .set("pool", &pool)
+                    .set("account", candidate.1)
+                    .set("updated_block", event.evt_block_number)
+                    .set("updated_at", timestamp);
+            }
+        }
+    }
+}
+
+fn write_imported_trade_changes(
+    tables: &mut Tables,
+    events: contract::ImportedTradeEvents,
+    indexes: StoreGetInt64,
+) {
+    for event in events.trades {
+        tables
+            .upsert_row(
+                "imported_token_trade_events",
+                format!("{}-{}", event.evt_tx_hash, event.evt_index),
+            )
+            .set(
+                "entity_index",
+                indexes
+                    .get_at(event.evt_ordinal, "imported_trade")
+                    .expect("imported trade index exists"),
+            )
+            .set("venue", event.venue)
+            .set("token", prefixed_hex(&event.token))
+            .set("trader", prefixed_hex(&event.trader))
+            .set("sellsman", prefixed_hex(&event.sellsman))
+            .set("recipient", prefixed_hex(&event.recipient))
+            .set("is_buy", event.is_buy)
+            .set("token_amount", event.token_amount)
+            .set("native_amount", event.native_amount)
+            .set("nutbox_token_fee", event.nutbox_token_fee)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", event_timestamp(event.evt_block_time))
+            .set("transaction_hash", event.evt_tx_hash)
+            .set("call_index", event.evt_index);
+    }
+}
+
 #[substreams::handlers::map]
 fn basket_db_out(
     basket_registry_events: contract::BasketRegistryEvents,
@@ -2635,6 +4153,45 @@ fn basket_db_out(
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut tables = Tables::new();
     write_basket_changes(&mut tables, basket_registry_events, basket_events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn v11_protocol_db_out(
+    events: contract::V11ProtocolEvents,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_v11_protocol_changes(&mut tables, events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn index_broker_db_out(
+    factory_events: contract::IndexBrokerEvents,
+    pool_events: contract::IndexBrokerEvents,
+    amm_events: contract::IndexBrokerEvents,
+    indexes: StoreGetInt64,
+    accounts: StoreGetInt64,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_index_broker_changes(
+        &mut tables,
+        factory_events,
+        pool_events,
+        amm_events,
+        indexes,
+        accounts,
+    );
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn imported_trade_db_out(
+    events: contract::ImportedTradeEvents,
+    indexes: StoreGetInt64,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_imported_trade_changes(&mut tables, events, indexes);
     Ok(tables.to_database_changes())
 }
 
@@ -2680,6 +4237,14 @@ fn db_out(
     nutbox_mining_child_events: contract::NutboxMiningEvents,
     basket_registry_events: contract::BasketRegistryEvents,
     basket_events: contract::BasketEvents,
+    v11_protocol_events: contract::V11ProtocolEvents,
+    index_broker_factory_events: contract::IndexBrokerEvents,
+    index_broker_pool_events: contract::IndexBrokerEvents,
+    index_broker_amm_events: contract::IndexBrokerEvents,
+    index_broker_indexes: StoreGetInt64,
+    index_broker_accounts: StoreGetInt64,
+    imported_trade_events: contract::ImportedTradeEvents,
+    imported_trade_indexes: StoreGetInt64,
     bonding_curve_supply: StoreGetBigInt,
     entity_indexes: StoreGetInt64,
     ipshare_indexes: StoreGetInt64,
@@ -2697,6 +4262,16 @@ fn db_out(
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut tables = Tables::new();
     write_basket_changes(&mut tables, basket_registry_events, basket_events);
+    write_v11_protocol_changes(&mut tables, v11_protocol_events);
+    write_index_broker_changes(
+        &mut tables,
+        index_broker_factory_events,
+        index_broker_pool_events,
+        index_broker_amm_events,
+        index_broker_indexes,
+        index_broker_accounts,
+    );
+    write_imported_trade_changes(&mut tables, imported_trade_events, imported_trade_indexes);
     write_nutbox_mining_changes(
         &mut tables,
         nutbox_mining_factory_events,
@@ -2718,6 +4293,8 @@ fn db_out(
             .set("token", &token_id)
             .set("creator", &creator)
             .set("symbol", &symbol)
+            .set("pump", prefixed_hex(&event.pump))
+            .set("version", event.version)
             .set("block_number", event.evt_block_number)
             .set("block_hash", prefixed_hex(&event.evt_block_hash))
             .set("block_timestamp", timestamp)
@@ -2734,8 +4311,8 @@ fn db_out(
             )
             .set("symbol", symbol)
             .set("creator", creator)
-            .set("pump", prefixed_hex(&PUMP_TRACKED_CONTRACT))
-            .set("version", 9)
+            .set("pump", prefixed_hex(&event.pump))
+            .set("version", event.version)
             .set("listed", false)
             .set("buy_times", 0)
             .set("sell_times", 0)
@@ -3560,6 +5137,44 @@ mod tests {
         }
     }
 
+    fn encoded_log(address: [u8; 20], topics: Vec<Vec<u8>>, values: Vec<ethabi::Token>) -> eth::Log {
+        eth::Log {
+            address: address.to_vec(),
+            topics,
+            data: ethabi::encode(&values),
+            index: 0,
+            block_index: 0,
+            ordinal: 0,
+        }
+    }
+
+    fn address_topic(value: u8) -> Vec<u8> {
+        let mut topic = vec![0; 32];
+        topic[12..].fill(value);
+        topic
+    }
+
+    fn hash(value: &str) -> Vec<u8> {
+        hex::decode(value.trim_start_matches("0x")).unwrap()
+    }
+
+    fn signed_slot(value: i128) -> Vec<u8> {
+        let mut slot = vec![if value < 0 { 0xff } else { 0x00 }; 32];
+        slot[16..].copy_from_slice(&value.to_be_bytes());
+        slot
+    }
+
+    fn swap_log(address: [u8; 20], topic: [u8; 32], slots: Vec<Vec<u8>>) -> eth::Log {
+        eth::Log {
+            address: address.to_vec(),
+            topics: vec![topic.to_vec()],
+            data: slots.into_iter().flatten().collect(),
+            index: 0,
+            block_index: 0,
+            ordinal: 0,
+        }
+    }
+
     fn has_table_pk(changes: &DatabaseChanges, table: &str, pk: &str) -> bool {
         changes.table_changes.iter().any(|change| {
             change.table == table
@@ -3568,6 +5183,400 @@ mod tests {
                     Some(PrimaryKey::Pk(value)) if value == pk
                 )
         })
+    }
+
+    #[test]
+    fn v11_tracking_keeps_every_v9_contract() {
+        let rebalance_executors = [BASKET_REBALANCE_EXECUTOR_V1, BASKET_REBALANCE_EXECUTOR_V3];
+        assert!(is_tracked_contract(&PUMP_V9, &PUMP_CONTRACTS));
+        assert!(is_tracked_contract(&PUMP_V11, &PUMP_CONTRACTS));
+        assert!(is_tracked_contract(&SWAP_HOOK_V9, &SWAP_HOOK_CONTRACTS));
+        assert!(is_tracked_contract(&SWAP_HOOK_V11, &SWAP_HOOK_CONTRACTS));
+        assert!(is_tracked_contract(&BASKET_HOOK_V1, &BASKET_HOOKS));
+        assert!(is_tracked_contract(&BASKET_HOOK_V3, &BASKET_HOOKS));
+        assert!(is_tracked_contract(&BASKET_ROUTER_V1, &BASKET_ROUTERS));
+        assert!(is_tracked_contract(&BASKET_ROUTER_V3, &BASKET_ROUTERS));
+        assert!(is_tracked_contract(
+            &BASKET_REBALANCE_EXECUTOR_V1,
+            &rebalance_executors
+        ));
+        assert!(is_tracked_contract(
+            &BASKET_REBALANCE_EXECUTOR_V3,
+            &rebalance_executors
+        ));
+    }
+
+    #[test]
+    fn manifests_filter_both_legacy_and_v11_addresses() {
+        let combined = include_str!("../substreams.yaml").to_ascii_lowercase();
+        let basket = include_str!("../substreams.basket.yaml").to_ascii_lowercase();
+
+        for address in [
+            prefixed_hex(&PUMP_V9),
+            prefixed_hex(&PUMP_V11),
+            prefixed_hex(&SWAP_HOOK_V9),
+            prefixed_hex(&SWAP_HOOK_V11),
+            prefixed_hex(&IMPORT_HELPER),
+            prefixed_hex(&TAGAI_SWAP_WRAPPER),
+            prefixed_hex(&NUTBOX_ROUTER),
+            prefixed_hex(&NUTBOX_COMMUNITY_FEE_HOOK),
+            prefixed_hex(&INDEX_BROKER_FACTORY),
+        ] {
+            assert!(combined.contains(&address), "combined manifest lost {address}");
+        }
+        for address in [
+            prefixed_hex(&BASKET_HOOK_V1),
+            prefixed_hex(&BASKET_HOOK_V3),
+            prefixed_hex(&BASKET_ROUTER_V1),
+            prefixed_hex(&BASKET_ROUTER_V3),
+            prefixed_hex(&BASKET_REBALANCE_EXECUTOR_V1),
+            prefixed_hex(&BASKET_REBALANCE_EXECUTOR_V3),
+        ] {
+            assert!(combined.contains(&address), "combined manifest lost {address}");
+            assert!(basket.contains(&address), "basket manifest lost {address}");
+        }
+    }
+
+    #[test]
+    fn swap_hook_events_pair_once_with_the_next_matching_pool_swap() {
+        let pool_a = vec![0xaa; 32];
+        let pool_b = vec![0xbb; 32];
+        let mut swaps = vec![
+            PoolSwap {
+                pool_id: pool_a.clone(),
+                amount0: BigInt::from(-10),
+                amount1: BigInt::from(20),
+                sqrt_price: BigInt::from(30),
+                log_index: 8,
+                matched: false,
+            },
+            PoolSwap {
+                pool_id: pool_b,
+                amount0: BigInt::from(-40),
+                amount1: BigInt::from(50),
+                sqrt_price: BigInt::from(60),
+                log_index: 10,
+                matched: false,
+            },
+            PoolSwap {
+                pool_id: pool_a.clone(),
+                amount0: BigInt::from(70),
+                amount1: BigInt::from(-80),
+                sqrt_price: BigInt::from(90),
+                log_index: 14,
+                matched: false,
+            },
+        ];
+
+        let first = take_pool_swap(&mut swaps, 6, &pool_a).unwrap();
+        let second = take_pool_swap(&mut swaps, 12, &pool_a).unwrap();
+        assert_eq!(first.1, BigInt::from(20));
+        assert_eq!(second.1, BigInt::from(-80));
+        assert!(take_pool_swap(&mut swaps, 6, &pool_a).is_none());
+    }
+
+    #[test]
+    fn decodes_basket_v3_rebalance_masks_without_changing_v1_decoder() {
+        let log = fixture_log(
+            &prefixed_hex(&BASKET_REBALANCE_EXECUTOR_V3),
+            &[
+                "0x43cfeb4ed80cb71dfccb1dd25427528fea50b1d3d1d01b8af194e596156329b4",
+                "0x0000000000000000000000001111111111111111111111111111111111111111",
+            ],
+            "0x000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000650000000000000000000000000000000000000000000000000000000000000005000000000000000000000000000000000000000000000000000000000000000a",
+        );
+
+        let event =
+            abi::basket_rebalance_v3::events::BasketRebalanced::match_and_decode(&log).unwrap();
+        assert_eq!(event.nav_before.to_string(), "100");
+        assert_eq!(event.nav_after.to_string(), "101");
+        assert_eq!(event.sell_mask.to_string(), "5");
+        assert_eq!(event.buy_mask.to_string(), "10");
+        assert!(abi::basket_rebalance::events::BasketRebalanced::match_and_decode(&log).is_none());
+    }
+
+    #[test]
+    fn decodes_import_router_and_fee_hook_business_events() {
+        let community_created = encoded_log(
+            IMPORT_HELPER,
+            vec![
+                hash("0x5e06d3fb1e2ef064225f5d8b7ab1420f6224bb37ff5b9d0b5135b65641f06c50"),
+                address_topic(0x11),
+                address_topic(0x22),
+                address_topic(0x33),
+            ],
+            vec![
+                ethabi::Token::Address([0x44; 20].into()),
+                ethabi::Token::Address([0x55; 20].into()),
+            ],
+        );
+        let community =
+            abi::import_helper::events::CommunityCreated::match_and_decode(&community_created)
+                .unwrap();
+        assert_eq!(community.token, vec![0x11; 20]);
+        assert_eq!(community.community, vec![0x22; 20]);
+        assert_eq!(community.pool, vec![0x33; 20]);
+        assert_eq!(community.creator, vec![0x44; 20]);
+        assert_eq!(community.calculator, vec![0x55; 20]);
+
+        let price_pool = encoded_log(
+            NUTBOX_ROUTER,
+            vec![
+                hash("0x4514dc50a3d3b4e96cf9778d176342a5f0d8243947e82632fcb9174d7cc9d03b"),
+                vec![0xaa; 32],
+                address_topic(0x11),
+                address_topic(0x22),
+            ],
+            vec![
+                ethabi::Token::Uint(2u64.into()),
+                ethabi::Token::Bytes(vec![0xde, 0xad]),
+            ],
+        );
+        let pool = abi::nutbox_router::events::PricePoolAdded::match_and_decode(&price_pool)
+            .unwrap();
+        assert_eq!(pool.pool_id, [0xaa; 32]);
+        assert_eq!(pool.source_type.to_string(), "2");
+        assert_eq!(pool.source_data, vec![0xde, 0xad]);
+
+        let route = encoded_log(
+            NUTBOX_ROUTER,
+            vec![
+                hash("0x765916de875505f4b4aaa0ad9cd4dd125e6eb6bb400096fad4c5bf5ac0242e6d"),
+                address_topic(0x11),
+                address_topic(0x22),
+                vec![0xcc; 32],
+            ],
+            vec![ethabi::Token::Array(vec![
+                ethabi::Token::FixedBytes(vec![0xaa; 32]),
+                ethabi::Token::FixedBytes(vec![0xbb; 32]),
+            ])],
+        );
+        let route = abi::nutbox_router::events::RouteAdded::match_and_decode(&route).unwrap();
+        assert_eq!(route.pool_ids, vec![[0xaa; 32], [0xbb; 32]]);
+
+        let pool_community = encoded_log(
+            NUTBOX_COMMUNITY_FEE_HOOK,
+            vec![
+                hash("0xa4be829bf25aa42920b5ab5d892ebecf8142737c450ed206b8e8d198fb98f87c"),
+                vec![0xaa; 32],
+                address_topic(0x22),
+                address_topic(0x11),
+            ],
+            vec![ethabi::Token::Address([0x55; 20].into())],
+        );
+        let config = abi::nutbox_community_fee_hook::events::PoolCommunitySet::match_and_decode(
+            &pool_community,
+        )
+        .unwrap();
+        assert_eq!(config.community, vec![0x22; 20]);
+        assert_eq!(config.token, vec![0x11; 20]);
+        assert_eq!(config.calculator, vec![0x55; 20]);
+
+        let fee = encoded_log(
+            NUTBOX_COMMUNITY_FEE_HOOK,
+            vec![
+                hash("0x2080e6fb663adb0d728205ca87dceb312d086757e7ba7b8e4c7be9528a47ab2a"),
+                vec![0xaa; 32],
+                address_topic(0x11),
+            ],
+            vec![
+                ethabi::Token::Uint(123u64.into()),
+                ethabi::Token::Bool(true),
+            ],
+        );
+        let fee = abi::nutbox_community_fee_hook::events::CommunityFeeCollected::match_and_decode(
+            &fee,
+        )
+        .unwrap();
+        assert_eq!(fee.amount.to_string(), "123");
+        assert!(fee.token_was_input);
+
+        let imported_market = encoded_log(
+            TAGAI_SWAP_WRAPPER,
+            vec![
+                hash("0x21cf1afd37d26683e28cacc65fc9cadad097e3ed89e0a48dded3708dd31fec8e"),
+                address_topic(0x11),
+                address_topic(0x22),
+                address_topic(0x44),
+            ],
+            vec![],
+        );
+        let market =
+            abi::tagai_swap_wrapper::events::ImportedMarketRegistered::match_and_decode(
+                &imported_market,
+            )
+            .unwrap();
+        assert_eq!(market.token, vec![0x11; 20]);
+        assert_eq!(market.community, vec![0x22; 20]);
+        assert_eq!(market.deployer, vec![0x44; 20]);
+    }
+
+    #[test]
+    fn index_broker_abis_cover_every_bsc_feature_family() {
+        fn event_names(raw: &str) -> Vec<String> {
+            serde_json::from_str::<Vec<serde_json::Value>>(raw)
+                .unwrap()
+                .into_iter()
+                .filter(|item| item["type"] == "event")
+                .filter_map(|item| item["name"].as_str().map(str::to_owned))
+                .collect()
+        }
+
+        let factory = event_names(include_str!("../abi/index_broker_factory.abi.json"));
+        let pool = event_names(include_str!("../abi/index_broker_pool.abi.json"));
+        let amm = event_names(include_str!("../abi/index_broker_amm.abi.json"));
+
+        for required in [
+            "IndexBrokerNFTCreated",
+            "IndexBrokerNFTAMMCreated",
+            "IndexBasketRouterSelected",
+            "PumpAdded",
+            "NFTTemplateAdded",
+        ] {
+            assert!(factory.iter().any(|name| name == required), "missing factory event {required}");
+        }
+        for required in [
+            "NFTMinted",
+            "WhitelistAllowanceConsumed",
+            "NFTReferralRecorded",
+            "NFTLevelUp",
+            "IndexMiningActivated",
+            "IndexMiningDeactivated",
+            "IndexMiningStaked",
+            "IndexMiningUnstaked",
+            "IndexMiningWeightUpgraded",
+            "IndexMiningWeightReduced",
+            "IndexRewardsInjected",
+            "IndexRewardsClaimed",
+            "IndexHolderFeesHarvested",
+            "RevealCommitted",
+            "NFTRevealed",
+            "MiningWeightMoved",
+        ] {
+            assert!(pool.iter().any(|name| name == required), "missing pool event {required}");
+        }
+        for required in [
+            "AMMActivated",
+            "NFTSold",
+            "NFTBought",
+            "NativeFeeReceived",
+            "NativeFeeRefunded",
+            "PlatformFeePaid",
+            "IndexTokenPurchased",
+            "IndexHolderFeesConverted",
+        ] {
+            assert!(amm.iter().any(|name| name == required), "missing AMM event {required}");
+        }
+    }
+
+    #[test]
+    fn decodes_index_broker_creation_metadata_missing_from_events() {
+        use ethabi::Token::{Address, Array, Bool, Bytes, String as AbiString, Tuple, Uint};
+
+        let amm_config = ethabi::encode(&[Tuple(vec![
+            Uint(100u64.into()),
+            Uint(200u64.into()),
+            Uint(3u64.into()),
+            Bytes(vec![0xde, 0xad, 0xbe, 0xef]),
+            Address([0x11; 20].into()),
+            Address([0x22; 20].into()),
+        ])]);
+        let meta = ethabi::encode(&[Tuple(vec![
+            AbiString("IDX".into()),
+            Address([0x01; 20].into()),
+            Address([0x02; 20].into()),
+            Address([0x03; 20].into()),
+            Array(vec![Uint(10u64.into()), Uint(20u64.into())]),
+            Array(vec![Uint(100u64.into()), Uint(200u64.into())]),
+            Uint(1u64.into()),
+            Uint(2u64.into()),
+            Uint(3u64.into()),
+            Uint(4u64.into()),
+            Uint(5u64.into()),
+            Uint(250u64.into()),
+            Bytes(amm_config),
+            Bytes(vec![]),
+            Bool(true),
+            Bool(false),
+            Array(vec![Address([0x04; 20].into())]),
+            Array(vec![Uint(1u64.into())]),
+        ])]);
+
+        let decoded = decode_index_broker_creation_meta(&meta).unwrap();
+        assert_eq!(decoded.level_thresholds, vec!["10", "20"]);
+        assert_eq!(decoded.level_weights, vec!["100", "200"]);
+        assert_eq!(decoded.price_source_data, vec![0xde, 0xad, 0xbe, 0xef]);
+    }
+
+    #[test]
+    fn imported_trade_amounts_cover_v2_v3_v4_buys_and_sells() {
+        let v2 = swap_log(
+            [0x22; 20],
+            V2_SWAP_TOPIC,
+            vec![signed_slot(100), signed_slot(0), signed_slot(0), signed_slot(200)],
+        );
+        assert_eq!(imported_swap_token_amount(&[v2.clone()], "V2", false, &[]).unwrap(), BigInt::from(100));
+        assert_eq!(imported_swap_token_amount(&[v2], "V2", true, &[]).unwrap(), BigInt::from(200));
+
+        let v3 = swap_log(
+            [0x33; 20],
+            V3_SWAP_TOPIC,
+            vec![signed_slot(100), signed_slot(-200)],
+        );
+        assert_eq!(imported_swap_token_amount(&[v3.clone()], "V3", false, &[]).unwrap(), BigInt::from(100));
+        assert_eq!(imported_swap_token_amount(&[v3], "V3", true, &[]).unwrap(), BigInt::from(200));
+
+        let manager = [0x44; 20];
+        let v4 = swap_log(
+            manager,
+            SWAP_TOPIC,
+            vec![signed_slot(-100), signed_slot(200)],
+        );
+        assert_eq!(imported_swap_token_amount(&[v4.clone()], "V4", false, &manager).unwrap(), BigInt::from(100));
+        assert_eq!(imported_swap_token_amount(&[v4], "V4", true, &manager).unwrap(), BigInt::from(200));
+    }
+
+    #[test]
+    fn imported_wrapper_calldata_decodes_every_venue_and_direction() {
+        let token = vec![0x11; 20];
+        let weth = RH_WETH.to_vec();
+        let address = vec![0x22; 20];
+        let amount = BigInt::from(1);
+        let pool_key = (weth.clone(), token.clone(), BigInt::from(100), BigInt::from(1), vec![0; 20]);
+        let calls = vec![
+            abi::tagai_swap_wrapper::functions::BuyToken {
+                sellsman: address.clone(), amount_out_min: amount.clone(), path: vec![weth.clone(), token.clone()],
+                to: address.clone(), deadline: amount.clone(), router: address.clone(),
+            }.encode(),
+            abi::tagai_swap_wrapper::functions::SellToken {
+                amount_in: amount.clone(), amount_out_min: amount.clone(), path: vec![token.clone(), weth.clone()],
+                to: address.clone(), deadline: amount.clone(), sellsman: address.clone(), router: address.clone(),
+            }.encode(),
+            abi::tagai_swap_wrapper::functions::BuyTokenV3 {
+                sellsman: address.clone(), amount_out_min: amount.clone(), token: token.clone(), to: address.clone(),
+                deadline: amount.clone(), router: address.clone(), pool_fee: BigInt::from(100),
+            }.encode(),
+            abi::tagai_swap_wrapper::functions::SellTokenV3 {
+                amount_in: amount.clone(), amount_out_min: amount.clone(), token: token.clone(), to: address.clone(),
+                deadline: amount.clone(), sellsman: address.clone(), router: address.clone(), pool_fee: BigInt::from(100),
+            }.encode(),
+            abi::tagai_swap_wrapper::functions::BuyTokenV4 {
+                sellsman: address.clone(), amount_out_min: amount.clone(), pool_key: pool_key.clone(), to: address.clone(),
+                pool_manager: address.clone(), sqrt_price_limit_x96: amount.clone(),
+            }.encode(),
+            abi::tagai_swap_wrapper::functions::SellTokenV4 {
+                amount_in: amount.clone(), amount_out_min: amount, pool_key, to: address.clone(), sellsman: address.clone(),
+                pool_manager: address, sqrt_price_limit_x96: BigInt::from(1),
+            }.encode(),
+        ];
+        let expected = [("V2", true), ("V2", false), ("V3", true), ("V3", false), ("V4", true), ("V4", false)];
+        for (input, (venue, is_buy)) in calls.into_iter().zip(expected) {
+            let call = eth::Call { input, ..Default::default() };
+            let decoded = decode_imported_call(&call).unwrap();
+            assert_eq!(decoded.venue, venue);
+            assert_eq!(decoded.is_buy, is_buy);
+            assert_eq!(decoded.token, token);
+        }
     }
 
     #[test]

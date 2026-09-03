@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.4.0
+  version: v0.5.0
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -25,6 +25,159 @@ binaries:
     file: ./target/wasm32-unknown-unknown/release/substreams.wasm
 
 modules:
+
+  - name: map_v11_protocol_events
+    kind: map
+    initialBlock: 51503865
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0xddf74905ad9ff90977154df960e21517f7e11aca || evt_addr:0x91ddcaeef99d674cddfffd1c1a204c5be8291a92 || evt_addr:0x200115d733106eca3954eaa5d1fcbc6d0efb78ae || evt_addr:0x58e2bf5481fb1a21b477a469b278183bd93140cc"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.V11ProtocolEvents
+
+  - name: store_imported_market_deployers
+    kind: store
+    initialBlock: 51503865
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_v11_protocol_events
+
+  - name: map_imported_trade_events
+    kind: map
+    initialBlock: 51503865
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822 || evt_sig:0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67 || evt_sig:0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_ipshare_subjects
+        mode: get
+      - store: store_imported_market_deployers
+        mode: get
+    output:
+      type: proto:contract.v1.ImportedTradeEvents
+
+  - name: store_imported_trade_indexes
+    kind: store
+    initialBlock: 51503865
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - map: map_imported_trade_events
+
+  - name: imported_trade_db_out
+    kind: map
+    initialBlock: 51503865
+    inputs:
+      - map: map_imported_trade_events
+      - store: store_imported_trade_indexes
+        mode: get
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: v11_protocol_db_out
+    kind: map
+    initialBlock: 51503865
+    inputs:
+      - map: map_v11_protocol_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: map_index_broker_factory_events
+    kind: map
+    initialBlock: 52436657
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x678871773b07322aa927fe5057870d1356f09676
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.IndexBrokerEvents
+
+  - name: store_index_broker_pools
+    kind: store
+    initialBlock: 52436657
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_index_broker_factory_events
+
+  - name: store_index_broker_amms
+    kind: store
+    initialBlock: 52436657
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_index_broker_factory_events
+
+  - name: map_index_broker_pool_events
+    kind: map
+    initialBlock: 52436657
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0xa02270409724ab2ef0cbf8f5c198a4f2693e2be21e66c222570aef73316b6643 || evt_sig:0x73f83819f9d5d3f8e0b6076e40003494f568ff73020fbbaad7994a91b43839e4 || evt_sig:0xdb529f07683e60706c3aec445c0f9bae55eea726a8689c18aa39997fbba419ce || evt_sig:0x8c1a85d41dd12c45339357ec161eae19d55d430eadd6a490bcbefcda47cb14e3 || evt_sig:0x6e11b80e1eac58140aebe9d076590b555b2044cd8c6c17aff65b8a6c06b1c22e || evt_sig:0x4a29544a99f3a8ae30882b3b44a301ea3a51134b0ea9482843c0a0178c2ed60e || evt_sig:0x8fb927af61e87bbda751c7269a1938b90fb2a21469baebcac2eab5dd11d04def || evt_sig:0x1e7f211134172921d7a9ff54801502c24bee0d0c5cfd6b6a00e90f05449bc2c8 || evt_sig:0x730975668b71c72acb242d34088f53d29428cd1121280d7d9e60b588c264e9f1 || evt_sig:0x2ac6f2e0347c2f47ff57551f64052a27e06c09173081feb22d86fab26a1e0d97 || evt_sig:0xf99bd767c79d28bc3186efc693c8b73d3ff44ff0881ddcf5f2a3cea20e543099 || evt_sig:0x878fe0fa783470ab12ed99491c54294f5a8441b0f1a27de57a3b1dc0c5693efb || evt_sig:0x4e54161132ae9fc7c22241f71db9fde6a05c883b1026974081677d63ff3e3531 || evt_sig:0x53dd952f18e75e99f1bd702351991dc2d8a52fba2c09fbde150664956f9e98a2 || evt_sig:0x3f7e9ec0038b6e960498837a5ac15cdf3882ecb541dc335dd6bde97a99b8e952 || evt_sig:0xee89be0bf118cf2e2fd3160c6eeb32aeac10d58eb643bab42f3f4a0307cdb6fe || evt_sig:0x0e61cfd0ee655641b3ed0a1dd373ec3cacf4c090de1f33708e3a4091f4947662 || evt_sig:0xc7f45227c391ab060293beada9acf5e42a57c957860937f2a9c7a5324557f137 || evt_sig:0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef || evt_sig:0x77fbc2bf69cc304acdb4c35e7ae6c14d61d18b933181b32d0d5dfc0602f1f57c"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_index_broker_factory_events
+      - store: store_index_broker_pools
+        mode: get
+    output:
+      type: proto:contract.v1.IndexBrokerEvents
+
+  - name: map_index_broker_amm_events
+    kind: map
+    initialBlock: 52436657
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0x75087db584c8ddded7bace07dc76cccaa9775524c8f214303ac500f43c3f4bc4 || evt_sig:0xde098f7db57d91d7e2ecd09194e70cd4559276f83e0def943485cb49c4eab45b || evt_sig:0xce2ca929d781ed370291ed5a65cddec5f8b87363a5ba2d0f22fb3b44a3abffec || evt_sig:0x22419da9da3107c9958ae6cfbac3a98267c51d80a8223082371b865714ebaf71 || evt_sig:0x44bda66dab9320f5157fa343d54f000327d61b11c425ff01e2e871039e572d4b || evt_sig:0x9f27a63dc6cba3c465fd87aaa474e3d7f3f43b80c761cbe99ebb9416b24df475 || evt_sig:0x6478902cdcfe667750a3f9dcfb76bc32878637b584cf0372becedb7ad3595108 || evt_sig:0xebe3db09f5650582b4782506e0d272262129183570e55fcf8768dd6e91f8c0f6"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_index_broker_factory_events
+      - store: store_index_broker_amms
+        mode: get
+    output:
+      type: proto:contract.v1.IndexBrokerEvents
+
+  - name: store_index_broker_indexes
+    kind: store
+    initialBlock: 52436657
+    updatePolicy: add
+    valueType: int64
+    inputs:
+      - map: map_index_broker_factory_events
+      - map: map_index_broker_pool_events
+      - map: map_index_broker_amm_events
+
+  - name: store_index_broker_accounts
+    kind: store
+    initialBlock: 52436657
+    updatePolicy: set_if_not_exists
+    valueType: int64
+    inputs:
+      - map: map_index_broker_pool_events
+      - map: map_index_broker_amm_events
+
+  - name: index_broker_db_out
+    kind: map
+    initialBlock: 52436657
+    inputs:
+      - map: map_index_broker_factory_events
+      - map: map_index_broker_pool_events
+      - map: map_index_broker_amm_events
+      - store: store_index_broker_indexes
+        mode: get
+      - store: store_index_broker_accounts
+        mode: get
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
   - name: map_walnut_factory_events
     kind: map
@@ -224,6 +377,14 @@ modules:
     inputs:
       - map: map_ipshare_events
 
+  - name: store_ipshare_subjects
+    kind: store
+    initialBlock: 6922897
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_ipshare_events
+
   - name: store_ipshare_holder_balances
     kind: store
     initialBlock: 6922897
@@ -246,15 +407,14 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: evt_addr:0x6c75e165e52e9c1661a75041650be2d919ee02a1
+        string: "evt_addr:0x6c75e165e52e9c1661a75041650be2d919ee02a1 || evt_addr:0x7686cbaf2dfc7000eb9b0d6de81e48c1211d2655"
     inputs:
       - source: sf.ethereum.type.v2.Block
     output:
       type: proto:contract.v1.Events
 
-  # Basket indexing starts at the current protocol deployment. This boundary
-  # prevents registrations from retired Basket deployments from entering the
-  # dynamic address store.
+  # The registry is shared by Basket V1 and V3. Starting at the V1 deployment
+  # preserves all historical baskets while later version fields distinguish V3.
   - name: map_basket_registry_events
     kind: map
     initialBlock: 18022342
@@ -281,7 +441,7 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: "evt_addr:0xc6c999fa94199da470a17806f04de85036f02a88 || evt_addr:0xd96e197f139b78e9f74555701f699aa051e0a50e || evt_addr:0xc2526404423ed03ce8d2608f5b94300f0aafa1a2 || evt_addr:0x773c71be8b5e3c0c49d9576211d06e2f316aaf4a || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
+        string: "evt_addr:0xc6c999fa94199da470a17806f04de85036f02a88 || evt_addr:0x7103aa53a7de0af737d1dc1a257838f6f488aa88 || evt_addr:0xd96e197f139b78e9f74555701f699aa051e0a50e || evt_addr:0x9b5e6b7cc3661737e6a118e0d4f0f89fb1034653 || evt_addr:0xc2526404423ed03ce8d2608f5b94300f0aafa1a2 || evt_addr:0x773c71be8b5e3c0c49d9576211d06e2f316aaf4a || evt_addr:0x1bca8a39021f6c65b62bbe79a59e41215cf19264 || evt_sig:0xc8ebb3117899d4977e166f3afca866eab0f7c92ff7ff409a7f0aae513f8ea415 || evt_sig:0xb178954b2b8d72198f669fcc42c6ab219225ed856f78566adab738f9fc0fca04 || evt_sig:0xd046302bdc39599e60a5981e59227dcd1c643f512f56f2e984390c3ac6eadedb || evt_sig:0x69a8abd422e0487bf4c2dba25bc00ea123691a6f14db12c2eb6aa9ab1ecc51ec || evt_sig:0x44193e6589368f66700032705cb4b8a760ac8eb5ece58921310857bcdede1e22 || evt_sig:0x00690ba9c38e6521dc26bc0d24ca6605f2ce1b07d886f650f8682d0f9f5ed051"
     inputs:
       - source: sf.ethereum.type.v2.Block
       - map: map_basket_registry_events
@@ -332,7 +492,7 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: evt_addr:0x5e8e2d77ce0d2e04ba058bbcecc13c7c8adb20cc
+        string: "evt_addr:0x5e8e2d77ce0d2e04ba058bbcecc13c7c8adb20cc || evt_addr:0x841dcad307a4444dc9e65f5709b2dc5e054c20cc"
     inputs:
       - source: sf.ethereum.type.v2.Block
     output:
@@ -399,6 +559,17 @@ modules:
       - map: map_nutbox_mining_child_events
       - map: map_basket_registry_events
       - map: map_basket_events
+      - map: map_v11_protocol_events
+      - map: map_index_broker_factory_events
+      - map: map_index_broker_pool_events
+      - map: map_index_broker_amm_events
+      - store: store_index_broker_indexes
+        mode: get
+      - store: store_index_broker_accounts
+        mode: get
+      - map: map_imported_trade_events
+      - store: store_imported_trade_indexes
+        mode: get
       - store: store_bonding_curve_supply
         mode: get
       - store: store_entity_indexes

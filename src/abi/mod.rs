@@ -1,6 +1,7 @@
 pub mod basket_auction;
 pub mod basket_hook;
 pub mod basket_rebalance;
+pub mod basket_rebalance_v3;
 pub mod basket_registry;
 pub mod basket_router;
 pub mod basket_token;
@@ -10,3 +11,10 @@ pub mod pump_contract;
 pub mod swap_hook;
 pub mod token_contract;
 pub mod walnut;
+pub mod import_helper;
+pub mod tagai_swap_wrapper;
+pub mod nutbox_router;
+pub mod nutbox_community_fee_hook;
+pub mod index_broker_factory;
+pub mod index_broker_pool;
+pub mod index_broker_amm;

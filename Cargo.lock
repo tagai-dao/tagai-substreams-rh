@@ -1180,6 +1180,7 @@ dependencies = [
  "prost 0.13.5",
  "prost-types 0.13.5",
  "regex",
+ "serde_json",
  "substreams",
  "substreams-database-change",
  "substreams-ethereum",
