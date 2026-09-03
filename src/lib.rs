@@ -5271,6 +5271,53 @@ mod tests {
     }
 
     #[test]
+    fn manifests_keep_every_module_within_the_substreams_input_limit() {
+        fn module_inputs(manifest: &str) -> Vec<(String, usize)> {
+            let mut result = Vec::new();
+            let mut current: Option<(String, usize)> = None;
+            let mut in_inputs = false;
+
+            for line in manifest.lines() {
+                if let Some(name) = line.strip_prefix("  - name: ") {
+                    if let Some(module) = current.take() {
+                        result.push(module);
+                    }
+                    current = Some((name.trim().to_string(), 0));
+                    in_inputs = false;
+                } else if line == "    inputs:" {
+                    in_inputs = true;
+                } else if in_inputs && line.starts_with("      - ") {
+                    if let Some((_, count)) = current.as_mut() {
+                        *count += 1;
+                    }
+                } else if in_inputs && !line.trim().is_empty() && !line.starts_with("      ") {
+                    in_inputs = false;
+                }
+            }
+            if let Some(module) = current {
+                result.push(module);
+            }
+            result
+        }
+
+        for manifest in [
+            include_str!("../substreams.yaml"),
+            include_str!("../substreams.basket.yaml"),
+        ] {
+            for (module, inputs) in module_inputs(manifest) {
+                assert!(
+                    inputs <= 30,
+                    "Substreams module {module} has {inputs} inputs; the protocol limit is 30"
+                );
+            }
+        }
+
+        let combined = module_inputs(include_str!("../substreams.yaml"));
+        assert!(combined.contains(&("legacy_db_out".into(), 20)));
+        assert!(combined.contains(&("db_out".into(), 6)));
+    }
+
+    #[test]
     fn swap_hook_events_pair_once_with_the_next_matching_pool_swap() {
         let pool_a = vec![0xaa; 32];
         let pool_b = vec![0xbb; 32];

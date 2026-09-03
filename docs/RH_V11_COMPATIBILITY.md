@@ -54,3 +54,14 @@ execution engine.
    block and validates new entities after it.
 5. API projection tests run the same endpoint fixtures for BSC Graph and RH
    PostgreSQL, allowing only chain-specific addresses and timestamps to differ.
+
+## Substreams structural limits
+
+- A module may have at most 30 direct inputs. Count inputs whenever a domain is
+  added to `substreams.yaml`; do not wait for production packaging to reveal an
+  oversized output module.
+- Keep the SQL output split by domain (`legacy`, Basket, Nutbox mining, V11,
+  IndexBroker and imported trades). The final `db_out` accepts those partial
+  `DatabaseChanges` outputs and restores global ordinal order before the sink.
+- `manifests_keep_every_module_within_the_substreams_input_limit` is a mandatory
+  regression test. Do not remove or weaken it when adding another module.
