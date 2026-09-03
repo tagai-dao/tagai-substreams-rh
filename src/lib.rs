@@ -4225,26 +4225,13 @@ fn basket_tvl_mining_db_out(
 }
 
 #[substreams::handlers::map]
-fn db_out(
+fn legacy_db_out(
     events: contract::Events,
     token_events: contract::TokenEvents,
     swap_events: contract::TokenEvents,
     ipshare_events: contract::IpShareEvents,
     walnut_factory_events: contract::WalnutEvents,
     walnut_events: contract::WalnutEvents,
-    nutbox_mining_factory_events: contract::NutboxMiningFactoryEvents,
-    nutbox_mining_parent_events: contract::NutboxMiningEvents,
-    nutbox_mining_child_events: contract::NutboxMiningEvents,
-    basket_registry_events: contract::BasketRegistryEvents,
-    basket_events: contract::BasketEvents,
-    v11_protocol_events: contract::V11ProtocolEvents,
-    index_broker_factory_events: contract::IndexBrokerEvents,
-    index_broker_pool_events: contract::IndexBrokerEvents,
-    index_broker_amm_events: contract::IndexBrokerEvents,
-    index_broker_indexes: StoreGetInt64,
-    index_broker_accounts: StoreGetInt64,
-    imported_trade_events: contract::ImportedTradeEvents,
-    imported_trade_indexes: StoreGetInt64,
     bonding_curve_supply: StoreGetBigInt,
     entity_indexes: StoreGetInt64,
     ipshare_indexes: StoreGetInt64,
@@ -4261,24 +4248,6 @@ fn db_out(
     walnut_account_indexes: StoreGetInt64,
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut tables = Tables::new();
-    write_basket_changes(&mut tables, basket_registry_events, basket_events);
-    write_v11_protocol_changes(&mut tables, v11_protocol_events);
-    write_index_broker_changes(
-        &mut tables,
-        index_broker_factory_events,
-        index_broker_pool_events,
-        index_broker_amm_events,
-        index_broker_indexes,
-        index_broker_accounts,
-    );
-    write_imported_trade_changes(&mut tables, imported_trade_events, imported_trade_indexes);
-    write_nutbox_mining_changes(
-        &mut tables,
-        nutbox_mining_factory_events,
-        nutbox_mining_parent_events,
-        nutbox_mining_child_events,
-    );
-
     for event in events.pump_new_tokens {
         let token_id = format!("0x{}", Hex(&event.token));
         let creator = format!("0x{}", Hex(&event.creator));
@@ -4971,6 +4940,38 @@ fn db_out(
     Ok(tables.to_database_changes())
 }
 
+#[substreams::handlers::map]
+fn db_out(
+    legacy: DatabaseChanges,
+    basket: DatabaseChanges,
+    nutbox_mining: DatabaseChanges,
+    v11_protocol: DatabaseChanges,
+    index_broker: DatabaseChanges,
+    imported_trades: DatabaseChanges,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    Ok(merge_database_changes([
+        legacy,
+        basket,
+        nutbox_mining,
+        v11_protocol,
+        index_broker,
+        imported_trades,
+    ]))
+}
+
+fn merge_database_changes<const N: usize>(changes: [DatabaseChanges; N]) -> DatabaseChanges {
+    let mut table_changes = Vec::new();
+    for change_set in changes {
+        table_changes.extend(change_set.table_changes);
+    }
+
+    // Partial writers are intentionally independent to remain below the
+    // Substreams input limit. Re-sort their changes into canonical block
+    // ordinal order before exposing the single SQL sink output.
+    table_changes.sort_by_key(|change| change.ordinal);
+    DatabaseChanges { table_changes }
+}
+
 fn token_key(address: &[u8]) -> String {
     prefixed_hex(address)
 }
@@ -5183,6 +5184,38 @@ mod tests {
                     Some(PrimaryKey::Pk(value)) if value == pk
                 )
         })
+    }
+
+    #[test]
+    fn unified_database_changes_restore_global_ordinal_order() {
+        use substreams_database_change::pb::sf::substreams::sink::database::v1::TableChange;
+
+        let changes = |ordinals: &[u64]| DatabaseChanges {
+            table_changes: ordinals
+                .iter()
+                .map(|ordinal| TableChange {
+                    ordinal: *ordinal,
+                    ..Default::default()
+                })
+                .collect(),
+        };
+        let output = merge_database_changes([
+            changes(&[2, 9]),
+            changes(&[1]),
+            changes(&[7]),
+            changes(&[4]),
+            changes(&[6]),
+            changes(&[3, 8]),
+        ]);
+
+        assert_eq!(
+            output
+                .table_changes
+                .iter()
+                .map(|change| change.ordinal)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4, 6, 7, 8, 9],
+        );
     }
 
     #[test]

@@ -541,10 +541,18 @@ modules:
     output:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
-  # PostgreSQL production path. The first migration slice writes Pump token
-  # discoveries; subsequent slices extend this output with mutable protocol
-  # state and immutable event-history tables.
-  - name: db_out
+  - name: basket_db_out
+    kind: map
+    initialBlock: 18022342
+    inputs:
+      - map: map_basket_registry_events
+      - map: map_basket_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # Keep the established RH domains in one compatibility writer. New domains
+  # use independent writers so no module exceeds Substreams' 30-input limit.
+  - name: legacy_db_out
     kind: map
     initialBlock: 6922897
     inputs:
@@ -554,22 +562,6 @@ modules:
       - map: map_ipshare_events
       - map: map_walnut_factory_events
       - map: map_walnut_events
-      - map: map_nutbox_mining_factory_events
-      - map: map_nutbox_mining_parent_events
-      - map: map_nutbox_mining_child_events
-      - map: map_basket_registry_events
-      - map: map_basket_events
-      - map: map_v11_protocol_events
-      - map: map_index_broker_factory_events
-      - map: map_index_broker_pool_events
-      - map: map_index_broker_amm_events
-      - store: store_index_broker_indexes
-        mode: get
-      - store: store_index_broker_accounts
-        mode: get
-      - map: map_imported_trade_events
-      - store: store_imported_trade_indexes
-        mode: get
       - store: store_bonding_curve_supply
         mode: get
       - store: store_entity_indexes
@@ -598,6 +590,21 @@ modules:
         mode: get
       - store: store_walnut_account_indexes
         mode: get
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # PostgreSQL production path. Domain writers are merged back into one
+  # canonical, ordinal-sorted DatabaseChanges stream for the SQL sink.
+  - name: db_out
+    kind: map
+    initialBlock: 6922897
+    inputs:
+      - map: legacy_db_out
+      - map: basket_db_out
+      - map: nutbox_mining_db_out
+      - map: v11_protocol_db_out
+      - map: index_broker_db_out
+      - map: imported_trade_db_out
     output:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
