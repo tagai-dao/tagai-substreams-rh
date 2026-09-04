@@ -110,6 +110,13 @@ instance; the developer laptop is not part of the production data path.
 Production systemd setup, monitoring, API cutover, and rollback instructions
 are documented in [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
+The canonical workflow for future contract upgrades, blue/green replays,
+cursor safety, downstream MySQL/API integration, incident recovery, and
+agent/operator collaboration is
+[`docs/SUBSTREAMS_AGENT_RUNBOOK.md`](docs/SUBSTREAMS_AGENT_RUNBOOK.md). New
+development and production work should start there; `docs/PRODUCTION.md`
+contains historical migration context that may describe superseded layouts.
+
 ## RH API reader
 
 `tagai-api` can read the Substreams PostgreSQL tables through its existing

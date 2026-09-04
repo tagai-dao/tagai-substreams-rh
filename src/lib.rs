@@ -85,13 +85,17 @@ fn pump_version(address: &[u8]) -> Option<u32> {
     }
 }
 
-fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
+fn map_pump_events_for(
+    blk: &eth::Block,
+    events: &mut contract::Events,
+    contracts: &[[u8; 20]],
+) {
     for rcpt in blk.receipts() {
         for log in rcpt
             .receipt
             .logs
             .iter()
-            .filter(|log| is_tracked_contract(&log.address, &PUMP_CONTRACTS))
+            .filter(|log| is_tracked_contract(&log.address, contracts))
         {
             if let Some(event) = abi::pump_contract::events::CreateFeeChanged::match_and_decode(log)
             {
@@ -229,7 +233,14 @@ fn map_pump_events(blk: &eth::Block, events: &mut contract::Events) {
 #[substreams::handlers::map]
 fn map_events(blk: eth::Block) -> Result<contract::Events, substreams::errors::Error> {
     let mut events = contract::Events::default();
-    map_pump_events(&blk, &mut events);
+    map_pump_events_for(&blk, &mut events, &PUMP_CONTRACTS);
+    Ok(events)
+}
+
+#[substreams::handlers::map]
+fn map_v11_pump_events(blk: eth::Block) -> Result<contract::Events, substreams::errors::Error> {
+    let mut events = contract::Events::default();
+    map_pump_events_for(&blk, &mut events, &[PUMP_V11]);
     Ok(events)
 }
 
@@ -1262,10 +1273,11 @@ fn store_imported_trade_indexes(events: contract::ImportedTradeEvents, store: St
     }
 }
 
-#[substreams::handlers::map]
-fn map_basket_registry_events(
-    blk: eth::Block,
-) -> Result<contract::BasketRegistryEvents, substreams::errors::Error> {
+fn map_basket_registry_events_for(
+    blk: &eth::Block,
+    hook_contracts: &[[u8; 20]],
+    minimum_version: u32,
+) -> contract::BasketRegistryEvents {
     let mut output = contract::BasketRegistryEvents::default();
     for rcpt in blk.receipts() {
         for log in rcpt
@@ -1278,11 +1290,15 @@ fn map_basket_registry_events(
             else {
                 continue;
             };
+            let version = event.version.to_i32().max(0) as u32;
+            if version < minimum_version {
+                continue;
+            }
             let salt = rcpt
                 .receipt
                 .logs
                 .iter()
-                .filter(|candidate| is_tracked_contract(&candidate.address, &BASKET_HOOKS))
+                .filter(|candidate| is_tracked_contract(&candidate.address, hook_contracts))
                 .filter_map(abi::basket_hook::events::BasketCreated::match_and_decode)
                 .find(|created| created.basket == event.basket)
                 .map(|created| created.salt.to_vec())
@@ -1296,18 +1312,39 @@ fn map_basket_registry_events(
                 basket: event.basket,
                 creator: event.creator,
                 registrar: event.registrar,
-                version: event.version.to_i32().max(0) as u32,
+                version,
                 created_at: event.created_at.to_u64(),
                 salt,
                 evt_block_hash: blk.hash.clone(),
             });
         }
     }
-    Ok(output)
+    output
+}
+
+#[substreams::handlers::map]
+fn map_basket_registry_events(
+    blk: eth::Block,
+) -> Result<contract::BasketRegistryEvents, substreams::errors::Error> {
+    Ok(map_basket_registry_events_for(&blk, &BASKET_HOOKS, 0))
+}
+
+#[substreams::handlers::map]
+fn map_v11_basket_registry_events(
+    blk: eth::Block,
+) -> Result<contract::BasketRegistryEvents, substreams::errors::Error> {
+    Ok(map_basket_registry_events_for(&blk, &[BASKET_HOOK_V3], 3))
 }
 
 #[substreams::handlers::store]
 fn store_basket_addresses(events: contract::BasketRegistryEvents, store: StoreSetInt64) {
+    for event in events.creations {
+        store.set(event.evt_ordinal, token_key(&event.basket), &1);
+    }
+}
+
+#[substreams::handlers::store]
+fn store_v11_basket_addresses(events: contract::BasketRegistryEvents, store: StoreSetInt64) {
     for event in events.creations {
         store.set(event.evt_ordinal, token_key(&event.basket), &1);
     }
@@ -1352,12 +1389,22 @@ fn take_router_trade(
     ))
 }
 
-#[substreams::handlers::map]
-fn map_basket_events(
-    blk: eth::Block,
-    discoveries: contract::BasketRegistryEvents,
-    basket_addresses: StoreGetInt64,
-) -> Result<contract::BasketEvents, substreams::errors::Error> {
+#[derive(Clone, Copy)]
+struct BasketEventSelection<'a> {
+    hooks: &'a [[u8; 20]],
+    routers: &'a [[u8; 20]],
+    include_fee_auction: bool,
+    include_v1_rebalances: bool,
+    include_v3_rebalances: bool,
+    include_token_events: bool,
+}
+
+fn map_basket_events_for(
+    blk: &eth::Block,
+    discoveries: &contract::BasketRegistryEvents,
+    basket_addresses: &StoreGetInt64,
+    selection: BasketEventSelection<'_>,
+) -> contract::BasketEvents {
     let mut output = contract::BasketEvents::default();
     for rcpt in blk.receipts() {
         let tx_hash = Hex(&rcpt.transaction.hash).to_string();
@@ -1366,7 +1413,7 @@ fn map_basket_events(
             .receipt
             .logs
             .iter()
-            .filter(|log| is_tracked_contract(&log.address, &BASKET_ROUTERS))
+            .filter(|log| is_tracked_contract(&log.address, selection.routers))
         {
             if let Some(event) = abi::basket_router::events::BasketBought::match_and_decode(log) {
                 router_trades.push(BasketRouterTrade {
@@ -1410,7 +1457,7 @@ fn map_basket_events(
 
         for log in &rcpt.receipt.logs {
             let common_time = Some(blk.timestamp().to_owned());
-            if is_tracked_contract(&log.address, &BASKET_HOOKS) {
+            if is_tracked_contract(&log.address, selection.hooks) {
                 let decoded = if let Some(event) =
                     abi::basket_hook::events::BasketBought::match_and_decode(log)
                 {
@@ -1505,7 +1552,7 @@ fn map_basket_events(
                 }
             }
 
-            if log.address == BASKET_FEE_AUCTION {
+            if selection.include_fee_auction && log.address == BASKET_FEE_AUCTION {
                 let mut item = contract::BasketAuctionEvent {
                     evt_tx_hash: tx_hash.clone(),
                     evt_index: log.block_index,
@@ -1573,7 +1620,7 @@ fn map_basket_events(
                 continue;
             }
 
-            if log.address == BASKET_REBALANCE_EXECUTOR_V1 {
+            if selection.include_v1_rebalances && log.address == BASKET_REBALANCE_EXECUTOR_V1 {
                 if let Some(event) = abi::basket_rebalance::events::BasketRebalanced::match_and_decode(log) {
                     output.rebalances.push(contract::BasketRebalance {
                         evt_tx_hash: tx_hash.clone(),
@@ -1591,7 +1638,7 @@ fn map_basket_events(
                 }
                 continue;
             }
-            if log.address == BASKET_REBALANCE_EXECUTOR_V3 {
+            if selection.include_v3_rebalances && log.address == BASKET_REBALANCE_EXECUTOR_V3 {
                 if let Some(event) =
                     abi::basket_rebalance_v3::events::BasketRebalanced::match_and_decode(log)
                 {
@@ -1609,6 +1656,10 @@ fn map_basket_events(
                         evt_block_hash: blk.hash.clone(),
                     });
                 }
+                continue;
+            }
+
+            if !selection.include_token_events {
                 continue;
             }
 
@@ -1691,7 +1742,51 @@ fn map_basket_events(
             }
         }
     }
-    Ok(output)
+    output
+}
+
+#[substreams::handlers::map]
+fn map_basket_events(
+    blk: eth::Block,
+    discoveries: contract::BasketRegistryEvents,
+    basket_addresses: StoreGetInt64,
+) -> Result<contract::BasketEvents, substreams::errors::Error> {
+    Ok(map_basket_events_for(
+        &blk,
+        &discoveries,
+        &basket_addresses,
+        BasketEventSelection {
+            hooks: &BASKET_HOOKS,
+            routers: &BASKET_ROUTERS,
+            include_fee_auction: true,
+            include_v1_rebalances: true,
+            include_v3_rebalances: true,
+            include_token_events: true,
+        },
+    ))
+}
+
+#[substreams::handlers::map]
+fn map_v11_basket_events(
+    blk: eth::Block,
+    discoveries: contract::BasketRegistryEvents,
+    basket_addresses: StoreGetInt64,
+) -> Result<contract::BasketEvents, substreams::errors::Error> {
+    Ok(map_basket_events_for(
+        &blk,
+        &discoveries,
+        &basket_addresses,
+        BasketEventSelection {
+            hooks: &[BASKET_HOOK_V3],
+            routers: &[BASKET_ROUTER_V3],
+            include_fee_auction: false,
+            include_v1_rebalances: false,
+            include_v3_rebalances: true,
+            // The exact V0.4 path already follows every basket discovered by
+            // the shared registry, including V3 basket token fee events.
+            include_token_events: false,
+        },
+    ))
 }
 
 #[substreams::handlers::map]
@@ -2772,8 +2867,14 @@ fn store_token_addresses(events: contract::Events, store: StoreSetInt64) {
     }
 }
 
-#[substreams::handlers::map]
-fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams::errors::Error> {
+#[substreams::handlers::store]
+fn store_v11_token_addresses(events: contract::Events, store: StoreSetInt64) {
+    for event in events.pump_new_tokens {
+        store.set(event.evt_ordinal, token_key(&event.token), &1);
+    }
+}
+
+fn map_swap_events_for(blk: &eth::Block, contracts: &[[u8; 20]]) -> contract::TokenEvents {
     let mut output = contract::TokenEvents::default();
     for rcpt in blk.receipts() {
         let mut pool_swaps = rcpt
@@ -2800,7 +2901,7 @@ fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams:
             .receipt
             .logs
             .iter()
-            .filter(|log| is_tracked_contract(&log.address, &SWAP_HOOK_CONTRACTS))
+            .filter(|log| is_tracked_contract(&log.address, contracts))
         {
             let Some(fee) = abi::swap_hook::events::SwapFeeCollected::match_and_decode(hook_log)
             else {
@@ -2832,7 +2933,19 @@ fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams:
             });
         }
     }
-    Ok(output)
+    output
+}
+
+#[substreams::handlers::map]
+fn map_swap_events(blk: eth::Block) -> Result<contract::TokenEvents, substreams::errors::Error> {
+    Ok(map_swap_events_for(&blk, &SWAP_HOOK_CONTRACTS))
+}
+
+#[substreams::handlers::map]
+fn map_v11_swap_events(
+    blk: eth::Block,
+) -> Result<contract::TokenEvents, substreams::errors::Error> {
+    Ok(map_swap_events_for(&blk, &[SWAP_HOOK_V11]))
 }
 
 struct PoolSwap {
@@ -2865,12 +2978,11 @@ fn take_pool_swap(
     ))
 }
 
-#[substreams::handlers::map]
-fn map_token_events(
-    blk: eth::Block,
-    discoveries: contract::Events,
-    token_addresses: StoreGetInt64,
-) -> Result<contract::TokenEvents, substreams::errors::Error> {
+fn map_token_events_for(
+    blk: &eth::Block,
+    discoveries: &contract::Events,
+    token_addresses: &StoreGetInt64,
+) -> contract::TokenEvents {
     let mut events = contract::TokenEvents::default();
 
     for rcpt in blk.receipts() {
@@ -2926,11 +3038,46 @@ fn map_token_events(
         }
     }
 
-    Ok(events)
+    events
+}
+
+#[substreams::handlers::map]
+fn map_token_events(
+    blk: eth::Block,
+    discoveries: contract::Events,
+    token_addresses: StoreGetInt64,
+) -> Result<contract::TokenEvents, substreams::errors::Error> {
+    Ok(map_token_events_for(
+        &blk,
+        &discoveries,
+        &token_addresses,
+    ))
+}
+
+#[substreams::handlers::map]
+fn map_v11_token_events(
+    blk: eth::Block,
+    discoveries: contract::Events,
+    token_addresses: StoreGetInt64,
+) -> Result<contract::TokenEvents, substreams::errors::Error> {
+    Ok(map_token_events_for(
+        &blk,
+        &discoveries,
+        &token_addresses,
+    ))
 }
 
 #[substreams::handlers::store]
 fn store_bonding_curve_supply(events: contract::TokenEvents, store: StoreAddBigInt) {
+    for event in events.trades {
+        let amount = BigInt::from_str(&event.token_amount).expect("valid token amount");
+        let delta = if event.is_buy { amount } else { -amount };
+        store.add(event.evt_ordinal, token_key(&event.token), delta);
+    }
+}
+
+#[substreams::handlers::store]
+fn store_v11_bonding_curve_supply(events: contract::TokenEvents, store: StoreAddBigInt) {
     for event in events.trades {
         let amount = BigInt::from_str(&event.token_amount).expect("valid token amount");
         let delta = if event.is_buy { amount } else { -amount };
@@ -3218,6 +3365,187 @@ fn write_basket_changes(
             .set("block_timestamp", event_timestamp(event.evt_block_time))
             .set("transaction_hash", event.evt_tx_hash)
             .set("log_index", event.evt_index);
+    }
+}
+
+// Legacy entity indexes are sequential store counters. Additive protocol
+// backfills cannot safely continue those counters without replaying the old
+// stores, so V11 rows use a disjoint, deterministic block/log index. API
+// projection cursors must use (block_number, log_index, id), not this value.
+fn additive_entity_index(block_number: u64, event_index: u32) -> i64 {
+    let block_number = i64::try_from(block_number).expect("block number fits in i64");
+    block_number
+        .checked_mul(1_000_000)
+        .and_then(|value| value.checked_add(i64::from(event_index)))
+        .expect("additive entity index fits in i64")
+}
+
+fn ensure_additive_account(
+    tables: &mut Tables,
+    account: &[u8],
+    timestamp: i64,
+    entity_index: i64,
+) {
+    if is_zero_address(account) {
+        return;
+    }
+    tables
+        .upsert_row("accounts", prefixed_hex(account))
+        .set_if_null("joined_at", timestamp)
+        .set_if_null("entity_index", entity_index);
+}
+
+fn write_v11_tagai_changes(
+    tables: &mut Tables,
+    events: contract::Events,
+    token_events: contract::TokenEvents,
+    swap_events: contract::TokenEvents,
+    bonding_curve_supply: StoreGetBigInt,
+) {
+    for event in events.pump_new_tokens {
+        let token = prefixed_hex(&event.token);
+        let creator = prefixed_hex(&event.creator);
+        let timestamp = event_timestamp(event.evt_block_time);
+        let entity_index = additive_entity_index(event.evt_block_number, event.evt_index);
+
+        tables
+            .upsert_row("pump_token_discoveries", &token)
+            .set("token", &token)
+            .set("creator", &creator)
+            .set("symbol", &event.tick)
+            .set("pump", prefixed_hex(&event.pump))
+            .set("version", event.version)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        tables
+            .upsert_row("tokens", &token)
+            .set("entity_index", entity_index)
+            .set("symbol", event.tick)
+            .set("creator", creator)
+            .set("pump", prefixed_hex(&event.pump))
+            .set("version", event.version)
+            .set("listed", false)
+            .set("buy_times", 0)
+            .set("sell_times", 0)
+            .set("tiptag_fee", 0)
+            .set("sellsman_fee", 0)
+            .set("bonding_curve_supply", 0)
+            .set("max_bonding_curve_supply", 0)
+            .set("price", 0)
+            .set("creation_block", event.evt_block_number)
+            .set("creation_log_index", event.evt_index);
+        tables
+            .upsert_row("pump_summary", "pump")
+            .add("token_counts", 1);
+        ensure_additive_account(&mut *tables, &event.creator, timestamp, entity_index);
+    }
+
+    for event in token_events.trades {
+        let id = event_id(&event.evt_tx_hash, event.evt_index);
+        let token = prefixed_hex(&event.token);
+        let timestamp = event_timestamp(event.evt_block_time);
+        let entity_index = additive_entity_index(event.evt_block_number, event.evt_index);
+        let token_amount = parse_bigint(&event.token_amount);
+        let tiptag_fee = parse_bigint(&event.tiptag_fee);
+        let sellsman_fee = parse_bigint(&event.sellsman_fee);
+        let supply = bonding_curve_supply
+            .get_at(event.evt_ordinal, &token)
+            .expect("V11 bonding curve supply exists at Trade ordinal");
+        let price = bonding_curve_price(&supply);
+
+        let token_row = tables.upsert_row("tokens", &token);
+        if event.is_buy {
+            token_row.add("buy_times", 1);
+        } else {
+            token_row.add("sell_times", 1);
+        }
+        token_row
+            .add("tiptag_fee", &tiptag_fee)
+            .add("sellsman_fee", &sellsman_fee)
+            .set("bonding_curve_supply", &supply)
+            .max("max_bonding_curve_supply", &supply)
+            .set("price", &price);
+        tables
+            .upsert_row("token_trade_events", &id)
+            .set("entity_index", entity_index)
+            .set("token", &token)
+            .set("buyer", prefixed_hex(&event.buyer))
+            .set("sellsman", prefixed_hex(&event.sellsman))
+            .set("is_buy", event.is_buy)
+            .set("token_amount", token_amount)
+            .set("eth_amount", event.eth_amount)
+            .set("tiptag_fee", tiptag_fee)
+            .set("sellsman_fee", sellsman_fee)
+            .set("price", price)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        ensure_additive_account(tables, &event.buyer, timestamp, entity_index);
+        ensure_additive_account(tables, &event.sellsman, timestamp, entity_index);
+    }
+
+    for event in swap_events.swap_trades {
+        let id = event_id(&event.evt_tx_hash, event.evt_index);
+        let token = prefixed_hex(&event.token);
+        let timestamp = event_timestamp(event.evt_block_time);
+        let entity_index = additive_entity_index(event.evt_block_number, event.evt_index);
+        let price = parse_bigint(&event.price);
+        let tiptag_fee = parse_bigint(&event.tiptag_fee);
+        let sellsman_fee = parse_bigint(&event.sellsman_fee);
+        let token_row = tables.upsert_row("tokens", &token).set("price", &price);
+        if event.is_buy {
+            token_row.add("buy_times", 1);
+        } else {
+            token_row.add("sell_times", 1);
+        }
+        tables
+            .upsert_row("token_trade_events", &id)
+            .set("entity_index", entity_index)
+            .set("token", &token)
+            .set("buyer", prefixed_hex(&event.buyer))
+            .set("sellsman", prefixed_hex(&event.sellsman))
+            .set("is_buy", event.is_buy)
+            .set("token_amount", event.token_amount)
+            .set("eth_amount", event.eth_amount)
+            .set("tiptag_fee", tiptag_fee)
+            .set("sellsman_fee", sellsman_fee)
+            .set("price", price)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", timestamp)
+            .set("transaction_hash", event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        ensure_additive_account(tables, &event.buyer, timestamp, entity_index);
+        ensure_additive_account(tables, &event.sellsman, timestamp, entity_index);
+    }
+
+    for event in token_events.listed_to_dex {
+        let token = prefixed_hex(&event.token);
+        let entity_index = additive_entity_index(event.evt_block_number, event.evt_index);
+        tables.upsert_row("tokens", &token).set("listed", true);
+        tables
+            .upsert_row("token_listings", &token)
+            .set("entity_index", entity_index)
+            .set("event_token", prefixed_hex(&event.event_token))
+            .set("pool_id", prefixed_hex(&event.pool_id))
+            .set("sqrt_price_x96", event.sqrt_price_x96)
+            .set("block_number", event.evt_block_number)
+            .set("block_hash", prefixed_hex(&event.evt_block_hash))
+            .set("block_timestamp", event_timestamp(event.evt_block_time))
+            .set("transaction_hash", event.evt_tx_hash)
+            .set("log_index", event.evt_index);
+        tables
+            .upsert_row("pump_summary", "pump")
+            .add("listed_counts", 1);
+        tables
+            .upsert_row("pairs", prefixed_hex(&event.pool_id))
+            .set("token", token)
+            .set("token_index", 1);
     }
 }
 
@@ -4157,6 +4485,34 @@ fn basket_db_out(
 }
 
 #[substreams::handlers::map]
+fn v11_tagai_db_out(
+    events: contract::Events,
+    token_events: contract::TokenEvents,
+    swap_events: contract::TokenEvents,
+    bonding_curve_supply: StoreGetBigInt,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_v11_tagai_changes(
+        &mut tables,
+        events,
+        token_events,
+        swap_events,
+        bonding_curve_supply,
+    );
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
+fn v11_basket_db_out(
+    registry_events: contract::BasketRegistryEvents,
+    basket_events: contract::BasketEvents,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut tables = Tables::new();
+    write_basket_changes(&mut tables, registry_events, basket_events);
+    Ok(tables.to_database_changes())
+}
+
+#[substreams::handlers::map]
 fn v11_protocol_db_out(
     events: contract::V11ProtocolEvents,
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
@@ -4959,6 +5315,42 @@ fn db_out(
     ]))
 }
 
+#[substreams::handlers::map]
+fn v11_backfill_db_out(
+    tagai: DatabaseChanges,
+    basket: DatabaseChanges,
+    protocol: DatabaseChanges,
+    index_broker: DatabaseChanges,
+    imported_trades: DatabaseChanges,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    Ok(merge_database_changes([
+        tagai,
+        basket,
+        protocol,
+        index_broker,
+        imported_trades,
+    ]))
+}
+
+#[substreams::handlers::map]
+fn v11_continuation_db_out(
+    production: DatabaseChanges,
+    tagai: DatabaseChanges,
+    basket: DatabaseChanges,
+    protocol: DatabaseChanges,
+    index_broker: DatabaseChanges,
+    imported_trades: DatabaseChanges,
+) -> Result<DatabaseChanges, substreams::errors::Error> {
+    Ok(merge_database_changes([
+        production,
+        tagai,
+        basket,
+        protocol,
+        index_broker,
+        imported_trades,
+    ]))
+}
+
 fn merge_database_changes<const N: usize>(changes: [DatabaseChanges; N]) -> DatabaseChanges {
     let mut table_changes = Vec::new();
     for change_set in changes {
@@ -5315,6 +5707,22 @@ mod tests {
         let combined = module_inputs(include_str!("../substreams.yaml"));
         assert!(combined.contains(&("legacy_db_out".into(), 20)));
         assert!(combined.contains(&("db_out".into(), 6)));
+        assert!(combined.contains(&("v11_backfill_db_out".into(), 5)));
+        assert!(combined.contains(&("v11_continuation_db_out".into(), 6)));
+    }
+
+    #[test]
+    fn additive_indexes_are_deterministic_and_disjoint_from_legacy_counters() {
+        assert_eq!(additive_entity_index(51_499_529, 17), 51_499_529_000_017);
+        assert!(additive_entity_index(51_499_529, 0) > 1_000_000_000);
+        assert_ne!(
+            additive_entity_index(51_499_529, 17),
+            additive_entity_index(51_499_529, 18)
+        );
+        assert_ne!(
+            additive_entity_index(51_499_529, 17),
+            additive_entity_index(51_499_530, 17)
+        );
     }
 
     #[test]

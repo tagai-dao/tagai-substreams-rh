@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.5.0
+  version: v0.5.1
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -25,6 +25,123 @@ binaries:
     file: ./target/wasm32-unknown-unknown/release/substreams.wasm
 
 modules:
+
+  # Additive V11 TagAI path. These modules intentionally do not reuse the
+  # legacy module names, so an exact V0.4 graph can remain byte-for-byte
+  # unchanged in the continuation package.
+  - name: map_v11_pump_events
+    kind: map
+    initialBlock: 51499529
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x7686cbaf2dfc7000eb9b0d6de81e48c1211d2655
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.Events
+
+  - name: store_v11_token_addresses
+    kind: store
+    initialBlock: 51499529
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_v11_pump_events
+
+  - name: map_v11_token_events
+    kind: map
+    initialBlock: 51499529
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0x9adcf0ad0cda63c4d50f26a48925cf6405df27d422a39c456b5f03f661c82982 || evt_sig:0x74beebcb41508a3651f8ab8f6ee9318bcf2e721ec973e146d4a943360de308e8"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_v11_pump_events
+      - store: store_v11_token_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.TokenEvents
+
+  - name: map_v11_swap_events
+    kind: map
+    initialBlock: 51499529
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x841dcad307a4444dc9e65f5709b2dc5e054c20cc
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.TokenEvents
+
+  - name: store_v11_bonding_curve_supply
+    kind: store
+    initialBlock: 51499529
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_v11_token_events
+
+  - name: v11_tagai_db_out
+    kind: map
+    initialBlock: 51499529
+    inputs:
+      - map: map_v11_pump_events
+      - map: map_v11_token_events
+      - map: map_v11_swap_events
+      - store: store_v11_bonding_curve_supply
+        mode: get
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # Basket V3 adds only the V3 hook/router/rebalance path. The exact V0.4
+  # registry/store path already discovers all versions and keeps indexing the
+  # shared basket-token fee/claim events.
+  - name: map_v11_basket_registry_events
+    kind: map
+    initialBlock: 52400736
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0x1f997deb6c8ac7bb4134bc7c6bf23f623cda25c6
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.BasketRegistryEvents
+
+  - name: store_v11_basket_addresses
+    kind: store
+    initialBlock: 52400736
+    updatePolicy: set
+    valueType: int64
+    inputs:
+      - map: map_v11_basket_registry_events
+
+  - name: map_v11_basket_events
+    kind: map
+    initialBlock: 52400736
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0x7103aa53a7de0af737d1dc1a257838f6f488aa88 || evt_addr:0x9b5e6b7cc3661737e6a118e0d4f0f89fb1034653 || evt_addr:0x1bca8a39021f6c65b62bbe79a59e41215cf19264"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_v11_basket_registry_events
+      - store: store_v11_basket_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.BasketEvents
+
+  - name: v11_basket_db_out
+    kind: map
+    initialBlock: 52400736
+    inputs:
+      - map: map_v11_basket_registry_events
+      - map: map_v11_basket_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
   - name: map_v11_protocol_events
     kind: map
@@ -602,6 +719,35 @@ modules:
       - map: legacy_db_out
       - map: basket_db_out
       - map: nutbox_mining_db_out
+      - map: v11_protocol_db_out
+      - map: index_broker_db_out
+      - map: imported_trade_db_out
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # Historical V11-only sink. It is safe to start at 51,499,529 because it
+  # excludes the legacy V0.4 database writer.
+  - name: v11_backfill_db_out
+    kind: map
+    initialBlock: 51499529
+    inputs:
+      - map: v11_tagai_db_out
+      - map: v11_basket_db_out
+      - map: v11_protocol_db_out
+      - map: index_broker_db_out
+      - map: imported_trade_db_out
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  # Final continuation sink. The package builder replaces `db_out` and every
+  # shared dependency with the exact V0.4 production definitions and binaries.
+  - name: v11_continuation_db_out
+    kind: map
+    initialBlock: 6922897
+    inputs:
+      - map: db_out
+      - map: v11_tagai_db_out
+      - map: v11_basket_db_out
       - map: v11_protocol_db_out
       - map: index_broker_db_out
       - map: imported_trade_db_out

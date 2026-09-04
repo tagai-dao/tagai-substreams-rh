@@ -1,5 +1,10 @@
 # RH production deployment
 
+> **Current operations:** This document preserves the original migration and
+> consolidation procedure. For current bounded-incremental production,
+> blue/green upgrades, cursor rules, and the V11 rollout, follow
+> [`SUBSTREAMS_AGENT_RUNBOOK.md`](SUBSTREAMS_AGENT_RUNBOOK.md).
+
 The original production data paths were:
 
 - `Pinax legacy continuation -> substreams-sink-sql -> PostgreSQL`

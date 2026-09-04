@@ -38,9 +38,19 @@ execution engine.
   they do not reuse legacy mining indexes.
 - PostgreSQL tables are additive. Existing primary keys and immutable event
   ordering cannot be renumbered during a continuation deployment.
-- A fresh blue/green database must replay from block `6,922,897`. A package
-  continuation may start later only when its old module hashes and cursor are
-  intentionally preserved.
+- The migration is an exact V0.4 continuation plus V11-only domain backfill
+  beginning at the earliest new source block `51,499,529`, followed by a
+  unified cutover at one recorded boundary. `make_additive_continuation`
+  replaces every shared template module with the definition and WASM binary
+  from the exact installed production package. The initial integrated V0.5
+  package remains a full-replay reference and must not inherit the V0.4 cursor.
+- The continuation becomes valid only after every unchanged legacy module and
+  store hash is preserved, new-domain writes are independently replayable, and
+  downstream immutable-event consumers use `(block, log/call index, id)` rather
+  than ordering mixed old/new modules by independently generated entity indexes.
+- A fresh blue/green database must replay from block `6,922,897` only if that
+  continuation proof fails or an existing state/aggregate semantic must be
+  rebuilt. A recent start block alone cannot reconstruct legacy dynamic stores.
 
 ## Required test gates
 

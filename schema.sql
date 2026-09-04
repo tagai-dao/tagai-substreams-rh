@@ -255,6 +255,8 @@ CREATE TABLE IF NOT EXISTS tokens (
 CREATE INDEX IF NOT EXISTS tokens_creator_idx ON tokens (creator);
 CREATE INDEX IF NOT EXISTS tokens_creation_idx
     ON tokens (creation_block, creation_log_index);
+CREATE INDEX IF NOT EXISTS tokens_sync_cursor_idx
+    ON tokens (creation_block, creation_log_index, id);
 
 CREATE TABLE IF NOT EXISTS token_trade_events (
     id TEXT PRIMARY KEY,
@@ -278,6 +280,8 @@ CREATE TABLE IF NOT EXISTS token_trade_events (
 
 CREATE INDEX IF NOT EXISTS token_trade_events_token_time_idx
     ON token_trade_events (token, block_timestamp DESC, log_index DESC);
+CREATE INDEX IF NOT EXISTS token_trade_events_sync_cursor_idx
+    ON token_trade_events (block_number, log_index, id);
 
 CREATE TABLE IF NOT EXISTS token_transfer_events (
     id TEXT PRIMARY KEY,
@@ -310,6 +314,9 @@ CREATE TABLE IF NOT EXISTS token_listings (
     log_index INTEGER NOT NULL,
     UNIQUE (transaction_hash, log_index)
 );
+
+CREATE INDEX IF NOT EXISTS token_listings_sync_cursor_idx
+    ON token_listings (block_number, log_index, token);
 
 -- Replacement Basket protocol (RH chain, indexed from block 16,303,863). Constituent
 -- composition and live reserves remain chain-read data and are intentionally
