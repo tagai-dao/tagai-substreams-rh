@@ -66,6 +66,11 @@ package can still spend time preparing stores that begin before
 `resolvedStartBlock`; limiting the forward range does not remove that one-time
 store preparation.
 
+Copying the old SQL cursor only restores modules whose exact hashes are present
+in that cursor. If a filter change gives a stateful additive branch a new hash,
+even a 1,000-block output request can prepare millions of earlier input blocks.
+Do not mistake `INCREMENTAL_MAX_BLOCKS` for a store-preparation cap.
+
 The active output must produce at least one cursor-bearing block within a batch.
 If a sparse pipeline repeatedly completes without advancing its cursor, do not
 silently increase or skip the start block: investigate the output/cursor design
@@ -445,13 +450,18 @@ by the old production sink after it is stopped gracefully.
 5. Run `v11_backfill_db_out` over `[H, C + 1)`. The stop block is exclusive.
 6. Stop/restart the backfill once and prove it resumes from its dedicated
    cursor; validate known transactions, row counts, and aggregates.
-7. Create fresh continuation cursor/history tables. Do **not** copy either the
-   old sink cursor or the domain-backfill cursor into them.
+7. Create dedicated continuation cursor/history tables. Normally, do **not**
+   copy either an old sink cursor or a domain-backfill cursor. The reviewed
+   V0.5.2 filter-fix cutover below is a narrow exception: its SPKG preserves the
+   exact V0.4 graph, deliberately starts the reset-safe branches at `C + 1`,
+   and promotes the V0.4 cursor under the new output hash only after the SQL
+   precondition check succeeds. Never promote the backfill output cursor.
 8. Configure the production sink with `v11_continuation_db_out`,
    `START_BLOCK=C+1`, and the fresh continuation cursor/history tables.
 9. Start the bounded production timer. Substreams reconstructs/reuses upstream
    store state, but SQL output begins only at `C+1`; PostgreSQL already contains
-   old data through `C` and new-domain data through `C`.
+   old data through `C` and new-domain data through `C`. Use a 1,000-block
+   canary before restoring the normal batch size.
 10. After PostgreSQL catches up, start `graph-data-sync`, verify its block/log/id
     cursors, then start `k-chart`.
 
@@ -763,6 +773,33 @@ disabled. V0.5.2 replaces that block filter with the exact TagAISwapWrapper
 address, so pool `Swap` logs may be inspected inside an already selected
 TipTag transaction but can never select unrelated chain blocks. It also removes
 ERC-721 `Transfer` as an IndexBroker block-filter trigger.
+
+The first V0.5.2 continuation canary inherited the V0.4 SQL cursor and requested
+only 1,000 future blocks, but it still entered historical store preparation.
+V0.5.2 changed the hashes of the imported-trade and IndexBroker pool branches,
+so the V0.5.1 cache for those branches was not a continuation state. Generate a
+cutover-specific artifact from the exact V0.5.2 continuation package:
+
+```bash
+cargo run --release --example make_cutover_continuation -- \
+  tiptag-v11-continuation-v0.5.2.spkg \
+  53869281 \
+  tiptag-v11-cutover-v0.5.2.spkg
+```
+
+This edits module metadata in the already-built SPKG; it does not rebuild the
+WASM or change unaffected module hashes. It retargets the corrected
+imported-trade and IndexBroker branches to `C + 1`. It is valid for this
+cutover only because the completed backfill proved there were no imported
+markets/trades or IndexBroker pools, AMMs, tokens, or accounts before `C`.
+Run `scripts/prepare-v11-filter-cutover.sql` while both the sink and
+`graph-data-sync` are stopped. The SQL aborts if any precondition has become
+false and rebases the three retained IndexBroker event indexes so a fresh
+post-cutover counter cannot violate their unique constraint.
+
+Never apply this reset pattern to a domain with non-empty historical state.
+V11 TagAI token-address/supply stores and Basket dynamic-address stores remain
+on their completed backfill hashes and are intentionally not retargeted.
 
 Local continuation/backfill packages assembled from the repository's V0.4
 artifact are structural test artifacts only because that V0.4 checksum does not
