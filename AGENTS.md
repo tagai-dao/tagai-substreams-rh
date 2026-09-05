@@ -32,6 +32,12 @@ markets, Nutbox Router, Community Fee Hook, or IndexBroker.
   start when one lacks a primary key.
 - Keep every Substreams module at or below 30 direct inputs. Preserve the
   structural regression test that enforces this limit.
+- Never use a chain-wide public event signature as a production block filter.
+  Generic DEX `Swap`, ERC-20/ERC-721 `Transfer`, and similar signatures wake
+  the graph for unrelated contracts and can turn a sparse backfill into
+  near-per-block billing. Filter by an exact project contract address or a
+  genuinely project-specific event. If neither is possible, omit that event
+  family from Substreams and use an address-scoped external source instead.
 - Do not add ERC-20 Transfer-based holder indexing to Substreams. RH holder
   snapshots come from Blockscout and are written by `tiptag-server` directly to
   MySQL.

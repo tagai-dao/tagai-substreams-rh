@@ -22,7 +22,7 @@ execution engine.
 | Source | Address | First block | Required coverage |
 | --- | --- | ---: | --- |
 | ImportHelper | `0xddf74905ad9ff90977154df960e21517f7e11aca` | 51,503,865 | Imported community creation and token/community association. |
-| TagAISwapWrapper | `0x91ddcaeef99d674cddfffd1c1a204c5be8291a92` | 51,503,865 | Imported V2, V3 and V4 buy/sell paths plus Nutbox fee outcomes. |
+| TagAISwapWrapper | `0x91ddcaeef99d674cddfffd1c1a204c5be8291a92` | 51,503,865 | Wrapper-owned business and Nutbox fee events only. Raw V2/V3/V4 pool `Swap` logs are excluded because their signatures are chain-wide. |
 | NutboxRouter | `0x200115d733106eca3954eaa5d1fcbc6d0efb78ae` | 51,514,371 | Price-pool and route lifecycle plus executed routes. |
 | Basket V3 token deployer | `0xf29faec2428376d650d84471b4c41499342c6c5a` | 52,400,736 | Basket creation is authoritative through the shared registry. |
 | IndexBrokerNFTFactory | `0x678871773b07322aa927fe5057870d1356f09676` | 52,436,657 | Factory, dynamic pool and AMM discovery. |
@@ -36,6 +36,9 @@ execution engine.
   NFT-mining and Basket-TVL-mining pools remain in their current dynamic stores.
 - IndexBroker factory events add pool and AMM addresses to new dynamic stores;
   they do not reuse legacy mining indexes.
+- IndexBroker ERC-721 `Transfer` is not a block-filter trigger. Ownership data
+  that requires ordinary transfers must come from an exact pool-address source;
+  a chain-wide `Transfer` signature is forbidden.
 - PostgreSQL tables are additive. Existing primary keys and immutable event
   ordering cannot be renumbered during a continuation deployment.
 - The migration is an exact V0.4 continuation plus V11-only domain backfill
@@ -55,9 +58,9 @@ execution engine.
 ## Required test gates
 
 1. Manifest tests assert that every legacy and new static address is present.
-2. ABI fixtures decode V9/V11 Pump and Token events, both swap hooks, Basket
-   V1/V3 creation/trade/rebalance, all imported router types, fee-hook outcomes,
-   and every IndexBroker pool/AMM feature family.
+2. ABI fixtures decode V9/V11 Pump and Token events, both project swap hooks,
+   Basket V1/V3 creation/trade/rebalance, wrapper/router business events,
+   fee-hook outcomes, and every IndexBroker pool/AMM feature family.
 3. Stateful tests cover dynamic discovery in the same transaction and later
    transactions, deterministic indexes, duplicate logs and undo/reorg changes.
 4. A bounded mainnet replay compares legacy entities before the V11 deployment
@@ -71,7 +74,11 @@ execution engine.
   added to `substreams.yaml`; do not wait for production packaging to reveal an
   oversized output module.
 - Keep the SQL output split by domain (`legacy`, Basket, Nutbox mining, V11,
-  IndexBroker and imported trades). The final `db_out` accepts those partial
-  `DatabaseChanges` outputs and restores global ordinal order before the sink.
+  IndexBroker and address-scoped imported trades). The final `db_out` accepts
+  those partial `DatabaseChanges` outputs and restores global ordinal order
+  before the sink.
+- A production-reachable block filter must use an exact project `evt_addr` or
+  a genuinely project-specific signature. Generic DEX `Swap`, ERC-20/ERC-721
+  `Transfer`, and other public signatures are release blockers.
 - `manifests_keep_every_module_within_the_substreams_input_limit` is a mandatory
   regression test. Do not remove or weaken it when adding another module.

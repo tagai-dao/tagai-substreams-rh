@@ -5712,6 +5712,38 @@ mod tests {
     }
 
     #[test]
+    fn production_manifest_never_uses_chain_wide_public_event_filters() {
+        let manifest = include_str!("../substreams.yaml");
+        for (name, signature) in [
+            (
+                "Uniswap V2 Swap",
+                "d78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822",
+            ),
+            (
+                "Uniswap V3 Swap",
+                "c42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67",
+            ),
+            (
+                "Uniswap V4 Swap",
+                "40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f",
+            ),
+            (
+                "ERC-20/ERC-721 Transfer",
+                "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            ),
+        ] {
+            assert!(
+                !manifest.contains(&format!("evt_sig:0x{signature}")),
+                "production manifest contains forbidden chain-wide {name} filter"
+            );
+        }
+
+        assert!(
+            manifest.contains("string: evt_addr:0x91ddcaeef99d674cddfffd1c1a204c5be8291a92")
+        );
+    }
+
+    #[test]
     fn additive_indexes_are_deterministic_and_disjoint_from_legacy_counters() {
         assert_eq!(additive_entity_index(51_499_529, 17), 51_499_529_000_017);
         assert!(additive_entity_index(51_499_529, 0) > 1_000_000_000);

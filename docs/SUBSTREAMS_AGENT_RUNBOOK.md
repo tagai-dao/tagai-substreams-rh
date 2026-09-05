@@ -108,6 +108,41 @@ MODULE_HASH_MISMATCH_POLICY=error
 hashes and state semantics are intentionally preserved. Restore `error`
 immediately after the new output identity is committed.
 
+### 3.1 Block-filter and processed-block invariant
+
+Processed-block cost must follow TipTag protocol activity, not general chain
+activity. A production-reachable module must never use a chain-wide public
+event signature as a standalone block-filter trigger. Forbidden examples
+include:
+
+- Uniswap-compatible V2, V3, or V4 `Swap` signatures;
+- ERC-20 or ERC-721 `Transfer`;
+- generic ownership, approval, or other standard-library events that unrelated
+  contracts emit frequently.
+
+Use an exact TipTag contract address (`evt_addr`) whenever the emitting address
+is known. A dynamic-contract module may use a genuinely protocol-specific
+event signature and must still reject addresses not present in its discovery
+store. If an event is both public and emitted by dynamic addresses, do not
+fall back to its chain-wide signature. Add reviewed exact addresses, obtain the
+state from an address-scoped external API, or explicitly omit that event family.
+
+Before a historical run, calculate its input range. During and after the run,
+record `progress_total_processed_blocks` and this ratio:
+
+```text
+processed-block ratio = processedBlocks / historicalInputBlocks
+```
+
+A sparse protocol backfill approaching `1.0` is a release blocker. Stop it and
+audit every block filter reachable from the selected sink module. A runtime
+address check inside Rust does not reduce the cost of blocks already selected
+by a broad index query.
+
+Regression tests must reject known public signatures in the production
+manifest and must verify that optional broad-scanning modules are not reachable
+from `db_out`, backfill outputs, or continuation outputs.
+
 ## 4. Classify the upgrade before coding
 
 Every contract change must be classified first.
@@ -339,7 +374,7 @@ Build the additive template containing uniquely named V11 modules:
 
 ```bash
 substreams build --manifest substreams.yaml
-test -s tiptag-substreams-v0.5.1.spkg
+test -s tiptag-substreams-v0.5.2.spkg
 ```
 
 On the production server, use the installed V0.4 artifact as the base:
@@ -347,13 +382,13 @@ On the production server, use the installed V0.4 artifact as the base:
 ```bash
 cargo run --release --example make_additive_continuation -- \
   /opt/tiptag-substreams/tiptag-unified-substreams-v0.4.0.spkg \
-  tiptag-substreams-v0.5.1.spkg \
-  tiptag-v11-continuation-v0.5.1.spkg
+  tiptag-substreams-v0.5.2.spkg \
+  tiptag-v11-continuation-v0.5.2.spkg
 
 cargo run --release --example set_sink_module -- \
-  tiptag-v11-continuation-v0.5.1.spkg \
+  tiptag-v11-continuation-v0.5.2.spkg \
   v11_backfill_db_out \
-  tiptag-v11-backfill-v0.5.1.spkg
+  tiptag-v11-backfill-v0.5.2.spkg
 ```
 
 The continuation package exposes `v11_continuation_db_out`, which merges the
@@ -364,15 +399,15 @@ Record both package checksums and output hashes, then prove preservation:
 
 ```bash
 sha256sum \
-  tiptag-v11-continuation-v0.5.1.spkg \
-  tiptag-v11-backfill-v0.5.1.spkg
+  tiptag-v11-continuation-v0.5.2.spkg \
+  tiptag-v11-backfill-v0.5.2.spkg
 
-substreams info tiptag-v11-continuation-v0.5.1.spkg v11_continuation_db_out
-substreams info tiptag-v11-backfill-v0.5.1.spkg v11_backfill_db_out
+substreams info tiptag-v11-continuation-v0.5.2.spkg v11_continuation_db_out
+substreams info tiptag-v11-backfill-v0.5.2.spkg v11_backfill_db_out
 
 scripts/audit-continuation-compatibility.sh \
   /opt/tiptag-substreams/tiptag-unified-substreams-v0.4.0.spkg \
-  tiptag-v11-continuation-v0.5.1.spkg \
+  tiptag-v11-continuation-v0.5.2.spkg \
   db_out \
   v11_continuation_db_out
 ```
@@ -696,13 +731,23 @@ behind `v11_backfill_db_out`, and merges them only for future blocks through
 block/log/id ordering. V0.4 remains production until the exact server artifact
 is used to build the final packages and every backfill/cutover gate passes.
 
-The local additive template currently has this development identity:
+The corrected additive template currently has this development identity:
 
-- manifest version: `v0.5.1`
-- template package: `tiptag-substreams-v0.5.1.spkg`
-- template SHA-256:
-  `5a04f3006e271f704a09c83375579d1dec88feb9d8244064f5f8a2989947c728`
+- manifest version: `v0.5.2`
+- template package: `tiptag-substreams-v0.5.2.spkg`
+- template SHA-256: record after the server build
 - `v11_backfill_db_out` initial block: `51,499,529`
+
+The V0.5.1 additive backfill completed `[51,499,529, 53,869,281)` but
+reported `2,334,178` processed blocks for a `2,369,752`-block input range, a
+`98.50%` ratio despite only a handful of TipTag transactions. The
+`map_imported_trade_events` path used chain-wide V2/V3/V4 `Swap` signatures,
+so unrelated DEX activity woke the graph before runtime address checks could
+discard it. V0.5.1 production catch-up was stopped with its timer still
+disabled. V0.5.2 replaces that block filter with the exact TagAISwapWrapper
+address, so pool `Swap` logs may be inspected inside an already selected
+TipTag transaction but can never select unrelated chain blocks. It also removes
+ERC-721 `Transfer` as an IndexBroker block-filter trigger.
 
 Local continuation/backfill packages assembled from the repository's V0.4
 artifact are structural test artifacts only because that V0.4 checksum does not

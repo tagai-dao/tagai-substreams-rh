@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.5.1
+  version: v0.5.2
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -169,7 +169,9 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: "evt_sig:0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822 || evt_sig:0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67 || evt_sig:0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f"
+        # The wrapper address is the trigger. Generic pool Swap signatures are
+        # inspected only inside selected receipts and never select chain blocks.
+        string: evt_addr:0x91ddcaeef99d674cddfffd1c1a204c5be8291a92
     inputs:
       - source: sf.ethereum.type.v2.Block
       - store: store_ipshare_subjects
@@ -239,7 +241,9 @@ modules:
     blockFilter:
       module: ethcommon:index_events
       query:
-        string: "evt_sig:0xa02270409724ab2ef0cbf8f5c198a4f2693e2be21e66c222570aef73316b6643 || evt_sig:0x73f83819f9d5d3f8e0b6076e40003494f568ff73020fbbaad7994a91b43839e4 || evt_sig:0xdb529f07683e60706c3aec445c0f9bae55eea726a8689c18aa39997fbba419ce || evt_sig:0x8c1a85d41dd12c45339357ec161eae19d55d430eadd6a490bcbefcda47cb14e3 || evt_sig:0x6e11b80e1eac58140aebe9d076590b555b2044cd8c6c17aff65b8a6c06b1c22e || evt_sig:0x4a29544a99f3a8ae30882b3b44a301ea3a51134b0ea9482843c0a0178c2ed60e || evt_sig:0x8fb927af61e87bbda751c7269a1938b90fb2a21469baebcac2eab5dd11d04def || evt_sig:0x1e7f211134172921d7a9ff54801502c24bee0d0c5cfd6b6a00e90f05449bc2c8 || evt_sig:0x730975668b71c72acb242d34088f53d29428cd1121280d7d9e60b588c264e9f1 || evt_sig:0x2ac6f2e0347c2f47ff57551f64052a27e06c09173081feb22d86fab26a1e0d97 || evt_sig:0xf99bd767c79d28bc3186efc693c8b73d3ff44ff0881ddcf5f2a3cea20e543099 || evt_sig:0x878fe0fa783470ab12ed99491c54294f5a8441b0f1a27de57a3b1dc0c5693efb || evt_sig:0x4e54161132ae9fc7c22241f71db9fde6a05c883b1026974081677d63ff3e3531 || evt_sig:0x53dd952f18e75e99f1bd702351991dc2d8a52fba2c09fbde150664956f9e98a2 || evt_sig:0x3f7e9ec0038b6e960498837a5ac15cdf3882ecb541dc335dd6bde97a99b8e952 || evt_sig:0xee89be0bf118cf2e2fd3160c6eeb32aeac10d58eb643bab42f3f4a0307cdb6fe || evt_sig:0x0e61cfd0ee655641b3ed0a1dd373ec3cacf4c090de1f33708e3a4091f4947662 || evt_sig:0xc7f45227c391ab060293beada9acf5e42a57c957860937f2a9c7a5324557f137 || evt_sig:0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef || evt_sig:0x77fbc2bf69cc304acdb4c35e7ae6c14d61d18b933181b32d0d5dfc0602f1f57c"
+        # ERC-721 Transfer is deliberately excluded. A chain-wide public
+        # signature would wake this dynamic-address module for unrelated NFTs.
+        string: "evt_sig:0xa02270409724ab2ef0cbf8f5c198a4f2693e2be21e66c222570aef73316b6643 || evt_sig:0x73f83819f9d5d3f8e0b6076e40003494f568ff73020fbbaad7994a91b43839e4 || evt_sig:0xdb529f07683e60706c3aec445c0f9bae55eea726a8689c18aa39997fbba419ce || evt_sig:0x8c1a85d41dd12c45339357ec161eae19d55d430eadd6a490bcbefcda47cb14e3 || evt_sig:0x6e11b80e1eac58140aebe9d076590b555b2044cd8c6c17aff65b8a6c06b1c22e || evt_sig:0x4a29544a99f3a8ae30882b3b44a301ea3a51134b0ea9482843c0a0178c2ed60e || evt_sig:0x8fb927af61e87bbda751c7269a1938b90fb2a21469baebcac2eab5dd11d04def || evt_sig:0x1e7f211134172921d7a9ff54801502c24bee0d0c5cfd6b6a00e90f05449bc2c8 || evt_sig:0x730975668b71c72acb242d34088f53d29428cd1121280d7d9e60b588c264e9f1 || evt_sig:0x2ac6f2e0347c2f47ff57551f64052a27e06c09173081feb22d86fab26a1e0d97 || evt_sig:0xf99bd767c79d28bc3186efc693c8b73d3ff44ff0881ddcf5f2a3cea20e543099 || evt_sig:0x878fe0fa783470ab12ed99491c54294f5a8441b0f1a27de57a3b1dc0c5693efb || evt_sig:0x4e54161132ae9fc7c22241f71db9fde6a05c883b1026974081677d63ff3e3531 || evt_sig:0x53dd952f18e75e99f1bd702351991dc2d8a52fba2c09fbde150664956f9e98a2 || evt_sig:0x3f7e9ec0038b6e960498837a5ac15cdf3882ecb541dc335dd6bde97a99b8e952 || evt_sig:0xee89be0bf118cf2e2fd3160c6eeb32aeac10d58eb643bab42f3f4a0307cdb6fe || evt_sig:0x0e61cfd0ee655641b3ed0a1dd373ec3cacf4c090de1f33708e3a4091f4947662 || evt_sig:0xc7f45227c391ab060293beada9acf5e42a57c957860937f2a9c7a5324557f137 || evt_sig:0x77fbc2bf69cc304acdb4c35e7ae6c14d61d18b933181b32d0d5dfc0602f1f57c"
     inputs:
       - source: sf.ethereum.type.v2.Block
       - map: map_index_broker_factory_events
