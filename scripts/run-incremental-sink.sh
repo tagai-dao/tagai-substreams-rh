@@ -27,6 +27,11 @@ fi
 CURSORS_TABLE="${CURSORS_TABLE:-cursors}"
 HISTORY_TABLE="${HISTORY_TABLE:-substreams_history}"
 
+if ! [[ "${CURSORS_TABLE}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "CURSORS_TABLE must be a valid unqualified PostgreSQL identifier" >&2
+  exit 1
+fi
+
 head_response="$(
   curl --fail --silent --show-error \
     --connect-timeout 10 \
@@ -50,21 +55,21 @@ fi
 
 chain_target_block=$((latest_block - LATEST_LAG_BLOCKS))
 
-cursor_output="$(
-  "${PROJECT_DIR}/bin/substreams-sink-sql" \
-    tools \
-    --dsn "${DATABASE_URL}" \
-    cursor read \
-    --cursors-table "${CURSORS_TABLE}" \
-    --history-table "${HISTORY_TABLE}" \
-    2>/dev/null
-)"
-
 cursor_block="$(
-  sed -nE 's/.*Block #([0-9]+).*/\1/p' <<<"${cursor_output}" \
-    | sort -n \
-    | tail -n 1
+  psql \
+    "${DATABASE_URL}" \
+    --no-psqlrc \
+    --tuples-only \
+    --no-align \
+    --set ON_ERROR_STOP=1 \
+    --command "SELECT COALESCE(MAX(block_num), 0) FROM \"${CURSORS_TABLE}\";"
 )"
+cursor_block="${cursor_block//[[:space:]]/}"
+
+if ! [[ "${cursor_block}" =~ ^[0-9]+$ ]]; then
+  echo "PostgreSQL returned an invalid cursor block: ${cursor_block}" >&2
+  exit 1
+fi
 
 resolved_start_block="${START_BLOCK}"
 if [[ -n "${cursor_block}" ]] && (( cursor_block > 0 )); then
