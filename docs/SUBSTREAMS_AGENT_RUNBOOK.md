@@ -835,10 +835,11 @@ scripts/audit-index-broker-output-hotfix.sh \
   tiptag-v11-cutover-v0.5.3.spkg
 ```
 
-The audit must show exactly two changed hashes:
+The audit must show exactly three changed hashes:
 
 - `index_broker_db_out`, because it receives the corrected WASM binary;
-- `v11_continuation_db_out`, because it depends on that output.
+- `v11_backfill_db_out` and `v11_continuation_db_out`, because both stateless
+  merge outputs depend on that output.
 
 Every upstream map and store hash must remain identical. Record the new SPKG
 SHA-256 and both changed hashes before installation.

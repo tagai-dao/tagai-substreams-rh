@@ -9,6 +9,7 @@ use std::{env, fs, path::Path};
 
 const TARGET_MODULE: &str = "index_broker_db_out";
 const FINAL_OUTPUT_MODULE: &str = "v11_continuation_db_out";
+const BACKFILL_OUTPUT_MODULE: &str = "v11_backfill_db_out";
 const ROOT_PACKAGE_NAME: &str = "tiptag_substreams";
 
 fn usage() -> &'static str {
@@ -71,10 +72,11 @@ fn apply_hotfix(mut base: Package, candidate: &Package) -> Result<Package, Strin
         ));
     }
 
-    // Both modules must exist before any mutation. The final module keeps its
-    // old binary and definition; its hash changes only because this target is
-    // one of its inputs.
+    // All downstream merge modules must exist before any mutation. They keep
+    // their old binaries and definitions; their hashes change only because
+    // this target is one of their inputs.
     find_module(&base, FINAL_OUTPUT_MODULE)?;
+    find_module(&base, BACKFILL_OUTPUT_MODULE)?;
     let base_target = find_module(&base, TARGET_MODULE)?.clone();
     let candidate_target = find_module(candidate, TARGET_MODULE)?.clone();
     if !compatible_definition(&base_target, &candidate_target) {
@@ -144,7 +146,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("replaced binary for: {TARGET_MODULE}");
     println!("preserved target initial block: {base_target_initial_block}");
     println!("preserved sink module definition: {FINAL_OUTPUT_MODULE}");
-    println!("expected changed module hashes: {TARGET_MODULE}, {FINAL_OUTPUT_MODULE}");
+    println!(
+        "expected changed module hashes: {TARGET_MODULE}, {BACKFILL_OUTPUT_MODULE}, {FINAL_OUTPUT_MODULE}"
+    );
     Ok(())
 }
 
@@ -175,6 +179,7 @@ mod tests {
             modules: Some(Modules {
                 modules: vec![
                     map_module(TARGET_MODULE, 0, target_initial_block),
+                    map_module(BACKFILL_OUTPUT_MODULE, 0, target_initial_block),
                     map_module(FINAL_OUTPUT_MODULE, 0, target_initial_block),
                     map_module("unchanged_store", 0, 123),
                 ],
@@ -199,6 +204,7 @@ mod tests {
     fn replaces_only_the_target_binary_and_preserves_cutover_metadata() {
         let base = package("v0.5.2", 1, 53_869_281);
         let unchanged_before = find_module(&base, "unchanged_store").unwrap().clone();
+        let backfill_before = find_module(&base, BACKFILL_OUTPUT_MODULE).unwrap().clone();
         let final_before = find_module(&base, FINAL_OUTPUT_MODULE).unwrap().clone();
         let candidate = package("v0.5.3", 2, 52_436_657);
 
@@ -213,6 +219,10 @@ mod tests {
         assert_eq!(
             find_module(&hotfix, "unchanged_store").unwrap(),
             &unchanged_before
+        );
+        assert_eq!(
+            find_module(&hotfix, BACKFILL_OUTPUT_MODULE).unwrap(),
+            &backfill_before
         );
         assert_eq!(
             find_module(&hotfix, FINAL_OUTPUT_MODULE).unwrap(),

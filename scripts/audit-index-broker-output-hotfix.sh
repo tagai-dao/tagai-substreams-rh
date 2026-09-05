@@ -59,7 +59,7 @@ for name in "${!base_hashes[@]}"; do
   if [[ "$base_hash" == "$hotfix_hash" ]]; then
     printf '%-44s %-10s %s\n' "$name" unchanged "$base_hash"
     case "$name" in
-    index_broker_db_out | v11_continuation_db_out)
+    index_broker_db_out | v11_backfill_db_out | v11_continuation_db_out)
       echo "required hotfix module did not change: $name" >&2
       failed=1
       ;;
@@ -70,7 +70,7 @@ for name in "${!base_hashes[@]}"; do
   ((changed += 1))
   printf '%-44s %-10s %s -> %s\n' "$name" changed "$base_hash" "$hotfix_hash"
   case "$name" in
-  index_broker_db_out | v11_continuation_db_out) ;;
+  index_broker_db_out | v11_backfill_db_out | v11_continuation_db_out) ;;
   *)
     echo "unexpected changed module: $name" >&2
     failed=1
@@ -85,8 +85,8 @@ for name in "${!hotfix_hashes[@]}"; do
   fi
 done
 
-if (( changed != 2 )); then
-  echo "expected exactly 2 changed hashes, found $changed" >&2
+if (( changed != 3 )); then
+  echo "expected exactly 3 changed hashes, found $changed" >&2
   failed=1
 fi
 if (( failed != 0 )); then
@@ -96,4 +96,4 @@ fi
 
 echo
 echo "IndexBroker output hotfix compatibility passed"
-echo "only index_broker_db_out and v11_continuation_db_out changed"
+echo "only index_broker_db_out and its two stateless merge outputs changed"
