@@ -50,12 +50,27 @@ RH production uses a bounded incremental systemd pair:
 - `tiptag-unified-incremental.service`
 
 The timer starts a `Type=oneshot` service ten seconds after the previous run
-becomes inactive. The wrapper reads `eth_blockNumber` and requests an exclusive
-stop block of:
+becomes inactive. The wrapper reads `eth_blockNumber`, reads the active SQL sink
+cursor, and limits each invocation to `INCREMENTAL_MAX_BLOCKS` (normally
+100,000). Its inclusive target is:
 
 ```text
-latest - LATEST_LAG_BLOCKS + 1
+min(latest - LATEST_LAG_BLOCKS, resolved_start + INCREMENTAL_MAX_BLOCKS - 1)
 ```
+
+The SQL sink stop block is that target plus one because stop blocks are
+exclusive. The log event includes `chainTargetBlock`, `resolvedStartBlock`,
+`maxBlocks`, `targetBlock`, and `stopBlockExclusive`, so a large catch-up has an
+observable boundary for every invocation. The first invocation of a changed
+package can still spend time preparing stores that begin before
+`resolvedStartBlock`; limiting the forward range does not remove that one-time
+store preparation.
+
+The active output must produce at least one cursor-bearing block within a batch.
+If a sparse pipeline repeatedly completes without advancing its cursor, do not
+silently increase or skip the start block: investigate the output/cursor design
+before resuming, otherwise a relevant event beyond the capped range could be
+starved.
 
 The accepted production lag is currently 6,000 blocks. The service must not run
 at the same time as the older continuous unified unit.

@@ -12,6 +12,7 @@ EnvironmentFile=/etc/tiptag-unified-substreams.env
 EnvironmentFile=/opt/tiptag-substreams/.substreams.env
 Environment=HEAD_RPC_URL=https://rpc.mainnet.chain.robinhood.com
 Environment=LATEST_LAG_BLOCKS=100
+Environment=INCREMENTAL_MAX_BLOCKS=100000
 Environment=MAX_RETRIES=3
 ExecStart=/opt/tiptag-substreams/scripts/run-incremental-sink.sh
 # Type=oneshot remains activating until ExecStart exits, so TimeoutStartSec is
