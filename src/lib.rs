@@ -3380,6 +3380,10 @@ fn additive_entity_index(block_number: u64, event_index: u32) -> i64 {
         .expect("additive entity index fits in i64")
 }
 
+fn index_broker_shared_pool_entity_index(event: &contract::IndexBrokerEvent) -> i64 {
+    additive_entity_index(event.evt_block_number, event.evt_index)
+}
+
 fn ensure_additive_account(
     tables: &mut Tables,
     account: &[u8],
@@ -4315,6 +4319,13 @@ fn write_index_broker_changes(
             } else {
                 "BURN"
             };
+            // IndexBroker owns an independent event-index store. Its small
+            // sequential values overlap with the legacy Walnut pool counter,
+            // while `walnut_pools.entity_index` is globally unique across all
+            // pool families. Use the additive block/log namespace for the
+            // shared compatibility row; IndexBroker-only tables can retain
+            // their domain-local counter.
+            let shared_pool_entity_index = index_broker_shared_pool_entity_index(&event);
             tables
                 .upsert_row("walnut_index_broker_nft_pools", &pool)
                 .set("entity_index", event_index)
@@ -4354,7 +4365,7 @@ fn write_index_broker_changes(
                 .set("updated_at", timestamp);
             tables
                 .upsert_row("walnut_pools", &pool)
-                .set("entity_index", event_index)
+                .set("entity_index", shared_pool_entity_index)
                 .set("pool_index", 0)
                 .set("created_at", timestamp)
                 .set("status", "OPEN")
@@ -5755,6 +5766,20 @@ mod tests {
             additive_entity_index(51_499_529, 17),
             additive_entity_index(51_499_530, 17)
         );
+
+        // IndexBroker's first domain-local event index is 1. The shared
+        // walnut_pools row must never reuse it because legacy Walnut already
+        // owns entity_index=1.
+        let event = contract::IndexBrokerEvent {
+            evt_block_number: 54_897_571,
+            evt_index: 23,
+            ..Default::default()
+        };
+        assert_eq!(
+            index_broker_shared_pool_entity_index(&event),
+            54_897_571_000_023
+        );
+        assert_ne!(index_broker_shared_pool_entity_index(&event), 1);
     }
 
     #[test]

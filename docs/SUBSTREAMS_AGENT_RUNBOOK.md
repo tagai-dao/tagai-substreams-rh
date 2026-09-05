@@ -801,6 +801,63 @@ Never apply this reset pattern to a domain with non-empty historical state.
 V11 TagAI token-address/supply stores and Basket dynamic-address stores remain
 on their completed backfill hashes and are intentionally not retargeted.
 
+### 12.1 V0.5.3 IndexBroker shared-pool hotfix
+
+The first live IndexBroker pool event exposed a compatibility-row collision in
+V0.5.2. At block `54,897,571`, `index_broker_db_out` attempted to insert pool
+`0x61791569edf9d2090927be59a66441e5ecf9e343` into `walnut_pools` with
+`entity_index = 1`. Legacy Social Curation pool
+`0xa0c6813c57d6b7caf171238ca561da64c3af3002` already owns that unique value.
+The SQL transaction rolled back and the sink stopped; no IndexBroker pool,
+AMM, token, account, or post-cutover event row was committed. The last accepted
+V0.5.2 cursor is block `54,892,462` under output hash
+`e95b7faea8a0cf5d017e7bcf338db554ffc59fb3`.
+
+V0.5.3 assigns only the shared `walnut_pools` compatibility row a deterministic
+additive index of `block_number * 1,000,000 + log_index`. IndexBroker-native
+tables retain their domain-local event counter. Do not rebuild the complete
+continuation graph for this fix: a monolithic new WASM would change every V11
+module hash and discard the completed store caches.
+
+Build the V0.5.3 template from the reviewed source, then derive the hotfix from
+the exact installed V0.5.2 cutover package:
+
+```bash
+substreams build --manifest substreams.yaml
+
+cargo run --release --example make_index_broker_output_hotfix -- \
+  /opt/tiptag-substreams/tiptag-v11-cutover-v0.5.2.spkg \
+  tiptag-substreams-v0.5.3.spkg \
+  tiptag-v11-cutover-v0.5.3.spkg
+
+scripts/audit-index-broker-output-hotfix.sh \
+  /opt/tiptag-substreams/tiptag-v11-cutover-v0.5.2.spkg \
+  tiptag-v11-cutover-v0.5.3.spkg
+```
+
+The audit must show exactly two changed hashes:
+
+- `index_broker_db_out`, because it receives the corrected WASM binary;
+- `v11_continuation_db_out`, because it depends on that output.
+
+Every upstream map and store hash must remain identical. Record the new SPKG
+SHA-256 and both changed hashes before installation.
+
+Resume from the existing `unified_v52_cutover_cursors` cursor; do not delete,
+copy, or rewind it. Because the final output identity changes, use
+`MODULE_HASH_MISMATCH_POLICY=ignore` for one reviewed bounded migration run
+only. Set `INCREMENTAL_MAX_BLOCKS=5109`, which requests exactly
+`[54,892,463, 54,897,572)` and includes the previously failing event. A
+successful commit must move the cursor to block `54,897,571` under the new
+V0.5.3 output hash and create the expected IndexBroker pool rows with a shared
+pool index greater than `54,897,571,000,000`.
+
+Immediately restore `MODULE_HASH_MISMATCH_POLICY=error` after that commit and
+before restoring the normal batch size. Do not rerun the historical backfill or
+`prepare-v11-filter-cutover.sql`; both already completed. Keep downstream
+`graph-data-sync` and `k-chart` stopped until strict-hash production catch-up
+and row validation pass.
+
 Local continuation/backfill packages assembled from the repository's V0.4
 artifact are structural test artifacts only because that V0.4 checksum does not
 match production. Their checksums are deliberately not release identities. The
