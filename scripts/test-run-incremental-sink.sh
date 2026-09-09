@@ -15,6 +15,7 @@ printf '%s\n' \
 
 printf '%s\n' \
   '#!/usr/bin/env bash' \
+  'printf '\''%s\n'\'' "$*" >>"${FAKE_PSQL_LOG}"' \
   'cat "${FAKE_CURSOR_FILE}"' \
   >"${FAKE_BIN}/psql"
 
@@ -30,6 +31,7 @@ chmod +x "${FAKE_BIN}/curl" "${FAKE_BIN}/psql" "${FAKE_BIN}/fake-sink"
 
 CURSOR_FILE="${TEST_DIR}/cursor"
 STATE_FILE="${TEST_DIR}/window.state"
+PSQL_LOG="${TEST_DIR}/psql.log"
 
 run_incremental() {
   env \
@@ -41,10 +43,11 @@ run_incremental() {
     INCREMENTAL_MAX_BLOCKS=1000 \
     INCREMENTAL_MAX_BLOCKS_CEILING=4000 \
     INCREMENTAL_WINDOW_GROWTH_FACTOR=2 \
-    INCREMENTAL_CURSOR_ID='test-output-hash' \
+    INCREMENTAL_CURSOR_ID='0123456789abcdef0123456789abcdef01234567' \
     INCREMENTAL_WINDOW_STATE_FILE="${STATE_FILE}" \
     INCREMENTAL_SINK_RUNNER="${FAKE_BIN}/fake-sink" \
     FAKE_CURSOR_FILE="${CURSOR_FILE}" \
+    FAKE_PSQL_LOG="${PSQL_LOG}" \
     FAKE_LATEST_HEX='0xf4240' \
     FAKE_CURSOR_AFTER="${FAKE_CURSOR_AFTER:-}" \
     FAKE_SINK_STATUS="${FAKE_SINK_STATUS:-0}" \
@@ -66,6 +69,11 @@ first_output="$(run_incremental)"
 assert_contains "${first_output}" '"maxBlocks":1000'
 assert_contains "${first_output}" '"nextWindowBlocks":2000'
 assert_contains "$(<"${STATE_FILE}")" 'next_window=2000'
+assert_contains "$(<"${PSQL_LOG}")" "WHERE id = '0123456789abcdef0123456789abcdef01234567'"
+if grep -q ":'cursor_id'" "${PSQL_LOG}"; then
+  echo "psql command still contains an unsubstituted cursor variable" >&2
+  exit 1
+fi
 
 second_output="$(run_incremental)"
 assert_contains "${second_output}" '"maxBlocks":2000'

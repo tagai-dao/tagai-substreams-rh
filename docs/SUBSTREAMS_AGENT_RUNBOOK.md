@@ -100,7 +100,8 @@ Inspect `incremental_window_state` logs for `cursorBlockBefore`,
 Set `INCREMENTAL_CURSOR_ID` to the exact active output-module hash whenever a
 cursor table contains multiple output hashes. Without it the compatibility
 fallback is the table's maximum block, which is ambiguous after a package
-transition.
+transition. The configured ID must be the module hash's 40-character
+hexadecimal representation.
 
 The accepted production lag is currently 6,000 blocks. The service must not run
 at the same time as the older continuous unified unit.

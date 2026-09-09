@@ -49,13 +49,21 @@ if ! [[ "${CURSORS_TABLE}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
   exit 1
 fi
 
+if [[ -n "${INCREMENTAL_CURSOR_ID}" ]] &&
+  ! [[ "${INCREMENTAL_CURSOR_ID}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "INCREMENTAL_CURSOR_ID must be a 40-character hexadecimal module hash" >&2
+  exit 1
+fi
 
 read_cursor_block() {
   local query
   local value
 
   if [[ -n "${INCREMENTAL_CURSOR_ID}" ]]; then
-    query="SELECT COALESCE(MAX(block_num), 0) FROM \"${CURSORS_TABLE}\" WHERE id = :'cursor_id';"
+    # INCREMENTAL_CURSOR_ID is strictly validated as hexadecimal above. Embed
+    # it directly because some deployed psql builds do not expand :'name'
+    # variables in a --command argument.
+    query="SELECT COALESCE(MAX(block_num), 0) FROM \"${CURSORS_TABLE}\" WHERE id = '${INCREMENTAL_CURSOR_ID}';"
     value="$(
       psql \
         "${DATABASE_URL}" \
@@ -63,7 +71,6 @@ read_cursor_block() {
         --tuples-only \
         --no-align \
         --set ON_ERROR_STOP=1 \
-        --set "cursor_id=${INCREMENTAL_CURSOR_ID}" \
         --command "${query}"
     )"
   else
