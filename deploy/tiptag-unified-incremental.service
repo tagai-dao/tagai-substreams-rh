@@ -13,7 +13,11 @@ EnvironmentFile=/opt/tiptag-substreams/.substreams.env
 Environment=HEAD_RPC_URL=https://rpc.mainnet.chain.robinhood.com
 Environment=LATEST_LAG_BLOCKS=100
 Environment=INCREMENTAL_MAX_BLOCKS=100000
+Environment=INCREMENTAL_MAX_BLOCKS_CEILING=1600000
+Environment=INCREMENTAL_WINDOW_GROWTH_FACTOR=2
 Environment=MAX_RETRIES=3
+StateDirectory=tiptag-substreams
+Environment=INCREMENTAL_WINDOW_STATE_FILE=/var/lib/tiptag-substreams/incremental-window.state
 ExecStart=/opt/tiptag-substreams/scripts/run-incremental-sink.sh
 # Type=oneshot remains activating until ExecStart exits, so TimeoutStartSec is
 # the effective stuck-run watchdog. RuntimeMaxSec does not cover that phase.

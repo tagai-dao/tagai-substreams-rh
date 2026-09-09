@@ -49,10 +49,16 @@ RH production uses a bounded incremental systemd pair:
 - `tiptag-unified-incremental.timer`
 - `tiptag-unified-incremental.service`
 
-The timer starts a `Type=oneshot` service ten seconds after the previous run
-becomes inactive. The wrapper reads `eth_blockNumber`, reads the active SQL sink
-cursor, and limits each invocation to `INCREMENTAL_MAX_BLOCKS` (normally
-100,000). Its inclusive target is:
+The timer checks a `Type=oneshot` service every ten seconds using a calendar
+timer. Starting an already-active service is a no-op, so there is still at most
+one sink process. Do not use `OnUnitInactiveSec` for this unit: a oneshot
+without `RemainAfterExit` can go directly from activating to dead and leave the
+timer `active (elapsed)` with `NextElapseUSecMonotonic=infinity` after its first
+`OnBootSec` trigger.
+
+The wrapper reads `eth_blockNumber`, reads the active SQL sink cursor, and uses
+`INCREMENTAL_MAX_BLOCKS` (normally 100,000) as its base invocation window. Its
+inclusive target is:
 
 ```text
 min(latest - LATEST_LAG_BLOCKS, resolved_start + INCREMENTAL_MAX_BLOCKS - 1)
@@ -71,11 +77,30 @@ in that cursor. If a filter change gives a stateful additive branch a new hash,
 even a 1,000-block output request can prepare millions of earlier input blocks.
 Do not mistake `INCREMENTAL_MAX_BLOCKS` for a store-preparation cap.
 
-The active output must produce at least one cursor-bearing block within a batch.
-If a sparse pipeline repeatedly completes without advancing its cursor, do not
-silently increase or skip the start block: investigate the output/cursor design
-before resuming, otherwise a relevant event beyond the capped range could be
-starved.
+The SQL sink cursor normally advances only when the selected output produces a
+cursor-bearing block. A sparse pipeline can therefore complete a bounded range
+successfully without changing its cursor. Repeating the same fixed range would
+starve every relevant event beyond that range. The production wrapper handles
+this without skipping blocks or manufacturing a cursor:
+
+1. after a successful sink run, read the same cursor again;
+2. if it advanced, reset the next window to `INCREMENTAL_MAX_BLOCKS`;
+3. if it did not advance, multiply the next window by
+   `INCREMENTAL_WINDOW_GROWTH_FACTOR` (normally 2), capped at
+   `INCREMENTAL_MAX_BLOCKS_CEILING` (normally 1,600,000);
+4. keep the same start cursor while only extending the exclusive stop block.
+
+The state is stored in `/var/lib/tiptag-substreams/incremental-window.state`
+and scoped to the database DSN, package path, configured start block, cursor
+table, and optional `INCREMENTAL_CURSOR_ID`. Package/cursor changes therefore
+reset to the base window. A sink failure never changes the adaptive state.
+Inspect `incremental_window_state` logs for `cursorBlockBefore`,
+`cursorBlockAfter`, `windowBlocks`, `nextWindowBlocks`, and `reason`.
+
+Set `INCREMENTAL_CURSOR_ID` to the exact active output-module hash whenever a
+cursor table contains multiple output hashes. Without it the compatibility
+fallback is the table's maximum block, which is ambiguous after a package
+transition.
 
 The accepted production lag is currently 6,000 blocks. The service must not run
 at the same time as the older continuous unified unit.
@@ -674,7 +699,9 @@ systemctl list-timers tiptag-unified-incremental.timer --no-pager
 ```
 
 An incremental service is normally `activating` while a bounded run is active.
-The timer can show no next trigger until that run becomes inactive.
+The calendar timer must show a concrete `NEXT` value even while the service is
+active. `NEXT=-` or `NextElapseUSecMonotonic=infinity` means scheduling is
+broken; inspect the effective timer configuration before restarting the sink.
 
 ### 10.2 Startup and target
 
