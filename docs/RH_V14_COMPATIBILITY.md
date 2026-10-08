@@ -1,8 +1,11 @@
 # RH V14 additive indexing
 
-Status (2026-10-08): local development and package validation. Not deployed.
-Production PostgreSQL execution, bounded Pinax replay, restart/resume, MySQL/API
-acceptance and rollback verification remain release gates. Follow
+Status (2026-10-08): V0.6.1 direct continuation is installed and running from
+78,241,606 after schema migration and a successful 1,000-block no-event canary.
+The Pump static replay verified 52 approvals in one processed block. Normal-run
+progress, actual event writes, nonzero cursor resume, MySQL/API acceptance and
+rollback verification remain release gates. Server evidence and backup identities
+are in `deployments/4663/v14-v0.6.1-server-candidate.json`. Follow
 `SUBSTREAMS_AGENT_RUNBOOK.md`; give the operator one server command at a time and
 inspect its actual output before the next command. Keep production indexing on.
 
@@ -235,8 +238,10 @@ restoring a pre-backfill backup or a reviewed scoped reversal that includes all
 shared aggregate contributions. Merely dropping V14 tables is not rollback.
 
 Local PostgreSQL integration remains pending because Docker is not running.
-Local package compatibility checks against repository artifacts are structural
-checks only; they do not prove compatibility with the as-yet-unread server SPKG.
+The operator executed the server migration with COMMIT and verified all 11 new
+tables have primary keys. The exact installed server V0.5.3 artifact audit also
+passed (64 unchanged hashes). The startup canary had no events, so these checks
+do not yet validate actual SQL event writes or downstream projections.
 
 
 ## Local validation evidence

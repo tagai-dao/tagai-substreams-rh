@@ -918,15 +918,16 @@ again before cutover.
   cutover boundary, validation evidence, and rollback state.
 
 
-## 14. V14 development record (2026-10-08)
+## 14. V14 deployment and catch-up record (2026-10-08)
 
 The V14 local implementation and compatibility contract are in
 [`RH_V14_COMPATIBILITY.md`](RH_V14_COMPATIBILITY.md). Template version is
 `v0.6.1`; the new outputs are `v14_backfill_db_out` and
 `v14_continuation_db_out`. Earliest source block is Router deployment
-83,024,792; Pump deployment is 83,065,677. This is not a production release
-record. No service, production schema or cursor has been changed. Obtain exact
-server release identities before constructing the production continuation.
+83,024,792; Pump deployment is 83,065,677. The operator has installed the
+continuation, migrated the schema, and started catch-up. Complete server
+identities, backup paths and validation evidence are recorded in
+`deployments/4663/v14-v0.6.1-server-candidate.json`.
 
 V0.6.0 server probes were rejected before processing by `limit-processed-blocks`:
 the full graph estimated about 163 million stage-blocks, while the static map
@@ -935,8 +936,10 @@ logs at 11:05 +02:00 still showed stages near 77.76 million, below the earliest
 V14 deployment. These estimates are not counts of V14 events or proof of replayed
 SQL rows. V0.6.1 moves community metadata enrichment to the stateless SQL output,
 keeps V14 stores dependent only on new-domain history, and removes the unused
-Basket discovery-store input. Local 40 tests and build pass. Exact-server hash
-audit, full-output bounded replay and database gates are still pending.
+Basket discovery-store input. Local 40 library tests, 2 assembler tests and
+build pass. Exact-server hash audit passed with 64 unchanged modules. The Pump
+static replay processed 1 block and verified 52 approved assets. All 11 new
+PostgreSQL tables and primary keys were verified after migration COMMIT.
 
 The operator selected direct V14 continuation if the final stopped legacy SQL
 cursor C is still below 83,024,792. V0.6.1 assembly now preserves the effective
@@ -946,4 +949,24 @@ cursor/history tables and strict hash checking, after migration and validation.
 Do not run a separate V14 historical backfill in this case. Re-read C after
 stopping the old writer; if it has passed the deployment boundary, revert to the
 domain-only backfill plan. See the V14 compatibility document for rollback and
-the full cutover gates. No production cutover has yet been performed.
+the full cutover gates.
+
+Final stopped C was 78,241,605, hash
+`fccc5d9d741e18b259ace6416781cba536a75769ed4753e07866deb064204f28`.
+The installed package SHA-256 is
+`1af895c7b2f27f3bb978c1688f688ac1d1560fe104b200ef841b08cc4c8c3c14`;
+output `v14_continuation_db_out` has hash
+`17a9486293f4cf6aaeb1b2e02724bae301332352` and initial block 53,869,281.
+It uses `tiptag_rh`, `unified_v14_cursors`,
+`unified_v14_substreams_history`, `START_BLOCK=78241606`, and strict hash policy.
+No opaque old cursor was copied. The 1,000-block canary completed with no output
+events and left an initialized new-hash cursor at block 0. The wrapper correctly
+uses START_BLOCK while that cursor is zero.
+
+At 13:43:03 +02:00 the resumed timer requested [78,241,606, 78,341,606), with
+100,000 base blocks and 8,000,000 ceiling. Session initialization confirmed 5
+parallel workers. Later stage progress, actual SQL event writes and a nonzero
+cursor resume are still pending; deployment is not proof of completed catch-up
+or V14 product acceptance. Before rollback, use the stopped database/config
+backup recorded in the JSON and review downstream state; do not simply resume
+the old cursor over writes already committed by the new sink.
