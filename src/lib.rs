@@ -1403,7 +1403,7 @@ struct BasketEventSelection<'a> {
 fn map_basket_events_for(
     blk: &eth::Block,
     discoveries: &contract::BasketRegistryEvents,
-    basket_addresses: &StoreGetInt64,
+    basket_addresses: Option<&StoreGetInt64>,
     selection: BasketEventSelection<'_>,
 ) -> contract::BasketEvents {
     let mut output = contract::BasketEvents::default();
@@ -1665,7 +1665,9 @@ fn map_basket_events_for(
             }
 
             let address_key = token_key(&log.address);
-            let is_basket = basket_addresses.get_at(log.ordinal, &address_key).is_some()
+            let is_basket = basket_addresses
+                .expect("basket token events require a discovery store")
+                .get_at(log.ordinal, &address_key).is_some()
                 || discoveries
                     .creations
                     .iter()
@@ -1755,7 +1757,7 @@ fn map_basket_events(
     Ok(map_basket_events_for(
         &blk,
         &discoveries,
-        &basket_addresses,
+        Some(&basket_addresses),
         BasketEventSelection {
             hooks: &BASKET_HOOKS,
             routers: &BASKET_ROUTERS,
@@ -1776,7 +1778,7 @@ fn map_v11_basket_events(
     Ok(map_basket_events_for(
         &blk,
         &discoveries,
-        &basket_addresses,
+        Some(&basket_addresses),
         BasketEventSelection {
             hooks: &[BASKET_HOOK_V3],
             routers: &[BASKET_ROUTER_V3],

@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.6.0
+  version: v0.6.1
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -36,10 +36,6 @@ modules:
         string: "evt_addr:0xd72826378cb53182319f7a8b2882de4997ffc896 || evt_addr:0x3e1d75fba24037123235f937a2bd19af135c60cc || evt_addr:0xfc82178523687edd56f7474d6529a14f7655ab15 || evt_addr:0x73cb7a6ad01686659f72011eb952fba53fe6212b || evt_addr:0xf64b0e841a756b32e0848b609e9a0d1646ec00d9 || evt_addr:0x37176232fbe6cbb87643308350c2ac8265ba2719"
     inputs:
       - source: sf.ethereum.type.v2.Block
-      - store: store_walnut_contracts
-        mode: get
-      - store: store_walnut_owners
-        mode: get
     output:
       type: proto:contract.v1.V14Events
 
@@ -93,6 +89,10 @@ modules:
       - store: store_v14_components
         mode: get
       - map: map_walnut_events
+      - store: store_walnut_contracts
+        mode: get
+      - store: store_walnut_owners
+        mode: get
     output:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
@@ -105,8 +105,6 @@ modules:
         string: "evt_addr:0x23627bae70f110407a46ee05970771cb3b25ea88 || evt_addr:0x47fcc4e4396bfb306e4cb60e53d366c7caf17971 || evt_addr:0xe2221f18ab7be5c830e853720966e5592f827d4d"
     inputs:
       - source: sf.ethereum.type.v2.Block
-      - store: store_basket_addresses
-        mode: get
     output:
       type: proto:contract.v1.BasketEvents
 
@@ -129,7 +127,9 @@ modules:
 
   - name: v14_continuation_db_out
     kind: map
-    initialBlock: 83024792
+    # The assembler derives this from the exact production output, including
+    # network overrides. The unified stream must cover legacy catch-up too.
+    initialBlock: 6922897
     inputs:
       - map: v11_continuation_db_out
       - map: v14_backfill_db_out

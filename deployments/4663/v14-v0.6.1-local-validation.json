@@ -1,0 +1,28 @@
+{
+  "status": "local-only-not-installed-on-server",
+  "sourceBaseCommit": "3586eb3",
+  "version": "v0.6.1",
+  "tests": { "libraryPassed": 40, "assemblerPassed": 2, "failed": 0 },
+  "build": "passed",
+  "template": {
+    "file": "tiptag-substreams-v0.6.1.spkg",
+    "sha256": "a3585cd1ae5f25a151e88274652f39f93bc1a361a32e920d6c628962b2b687c1",
+    "staticMapHash": "c1bab1be90adb2ce788a125bf667ef9b6a7704da",
+    "backfillHash": "bc52b7518be49817e9b7f699a2cea5a86e0c536d",
+    "continuationHash": "7bf02226ef3244e551f04cd9dcc5832e5c33d343"
+  },
+  "localCompatibilityTest": {
+    "baseFile": "tiptag-v11-continuation-v0.5.2.spkg",
+    "baseSha256": "fd2f95e51284291c393a5e80f22fc12f6aa6624c99db3ee41b54ec6865794489",
+    "sharedModules": 64,
+    "unchangedModules": 64,
+    "changedModules": 0,
+    "oldAndNewOutputInitialBlock": 6922897,
+    "v14BackfillInitialBlock": 83024792,
+    "note": "Structural test only. Server must assemble from its exact installed V0.5.3 artifact and record new hashes/checksums."
+  },
+  "selectedPlan": "Direct unified continuation from C+1 only if the final stopped old committed cursor C is below 83024792 and no V14 SQL backfill has written rows. Fresh sink-managed cursor/history tables, strict hash policy, no opaque cursor copying.",
+  "cutoverBlock": null,
+  "serverMigrationExecuted": false,
+  "serverCutoverExecuted": false
+}

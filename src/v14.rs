@@ -154,10 +154,7 @@ fn matching_swap<'a>(logs: &'a [eth::Log], fee_log: &eth::Log) -> Option<&'a eth
         .position(|l| l.block_index == fee_log.block_index)?;
     swaps.get(position).copied()
 }
-fn static_events(
-    blk: &eth::Block,
-    community_info: impl Fn(u64, &str) -> Option<(String, String)>,
-) -> Events14 {
+fn static_events(blk: &eth::Block) -> Events14 {
     let contracts: BTreeMap<_, _> = [
         (PUMP, PUMP_ABI),
         (HOOK, HOOK_ABI),
@@ -179,13 +176,6 @@ fn static_events(
             let Some((kind, mut p)) = decode(contract, log) else {
                 continue;
             };
-            if address == FACTORY && kind == "TradeCurationCreated" {
-                let community = string(&p, "community");
-                let (asset, owner) = community_info(log.ordinal, community)
-                    .expect("TradeCuration community must be discovered by legacy factory store");
-                p["asset"] = json!(asset);
-                p["owner"] = json!(owner);
-            }
             if address == HOOK && kind == "SwapFeeCollected" {
                 if let Some(swap) = matching_swap(&rcpt.receipt.logs, log) {
                     let amount0 = BigInt::from_signed_bytes_be(&swap.data[0..32]);
@@ -202,16 +192,8 @@ fn static_events(
     }
 }
 #[substreams::handlers::map]
-fn map_v14_static_events(
-    blk: eth::Block,
-    communities: StoreGetString,
-    owners: StoreGetString,
-) -> Result<Events14, substreams::errors::Error> {
-    Ok(static_events(&blk, |ordinal, community| {
-        let value = communities.get_at(ordinal, community)?;
-        let asset = value.strip_prefix("COMMUNITY|")?.to_string();
-        Some((asset, owners.get_at(ordinal, community)?))
-    }))
+fn map_v14_static_events(blk: eth::Block) -> Result<Events14, substreams::errors::Error> {
+    Ok(static_events(&blk))
 }
 fn discovery(e: &Event14) -> Option<(String, String)> {
     let p = payload(e);
@@ -222,8 +204,7 @@ fn discovery(e: &Event14) -> Option<(String, String)> {
         )),
         (FACTORY, "TradeCurationCreated") => Some((
             string(&p, "pool").into(),
-            json!({"type":"TRADE_CURATION","community":p["community"],"asset":p["asset"]})
-                .to_string(),
+            json!({"type":"TRADE_CURATION","community":p["community"]}).to_string(),
         )),
         _ => None,
     }
@@ -266,7 +247,6 @@ fn dynamic_events(
             if let Some((kind, mut p)) = decode(a, log) {
                 if kind == "TradeClaimed" {
                     p["community"] = meta["community"].clone();
-                    p["asset"] = meta["asset"].clone();
                 }
                 events.push(envelope(blk, &rcpt.transaction, log, kind, p));
             }
@@ -787,6 +767,33 @@ fn event_changes(
     }
     changes
 }
+// Resolve legacy display/operation metadata only at the output boundary.
+// Discovery, supply and component stores must depend solely on V14 history.
+fn enrich_community_metadata(
+    e: &mut Event14,
+    community_asset: impl Fn(u64, &str) -> Option<String>,
+    community_owner: impl Fn(u64, &str) -> Option<String>,
+    legacy_community_events: &contract::WalnutEvents,
+) {
+    if !matches!(e.kind.as_str(), "TradeCurationCreated" | "TradeClaimed") {
+        return;
+    }
+    let mut p = payload(e);
+    let community = string(&p, "community").to_string();
+    p["asset"] = json!(community_asset(e.ordinal, &community)
+        .expect("TradeCuration community must be discovered by legacy factory store"));
+    if e.kind == "TradeCurationCreated" {
+        p["owner"] = json!(community_owner(e.ordinal, &community)
+            .expect("TradeCuration community owner must be known at creation"));
+        if legacy_community_events.events.iter().any(|old| {
+            old.kind == "ADMINCLOSEPOOL" && prefixed_hex(&old.pool) == string(&p, "pool")
+        }) {
+            p["closedInBlock"] = json!(true);
+        }
+    }
+    e.payload = p.to_string();
+}
+
 #[substreams::handlers::map]
 fn v14_core_db_out(
     statics: Events14,
@@ -794,18 +801,22 @@ fn v14_core_db_out(
     supply: StoreGetBigInt,
     components: StoreGetString,
     legacy_community_events: contract::WalnutEvents,
+    communities: StoreGetString,
+    owners: StoreGetString,
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut output = DatabaseChanges::default();
     for mut e in normalize(statics.events.into_iter().chain(dynamic.events).collect()) {
-        if e.kind == "TradeCurationCreated" {
-            let mut p = payload(&e);
-            if legacy_community_events.events.iter().any(|old| {
-                old.kind == "ADMINCLOSEPOOL" && prefixed_hex(&old.pool) == string(&p, "pool")
-            }) {
-                p["closedInBlock"] = json!(true);
-                e.payload = p.to_string();
-            }
-        }
+        enrich_community_metadata(
+            &mut e,
+            |ordinal, community| {
+                communities
+                    .get_at(ordinal, community)?
+                    .strip_prefix("COMMUNITY|")
+                    .map(str::to_string)
+            },
+            |ordinal, community| owners.get_at(ordinal, community),
+            &legacy_community_events,
+        );
         let p = payload(&e);
         let pair = if e.kind == "NutboxStakingPoolLinked" {
             string(&p, "lpToken")
@@ -829,12 +840,11 @@ fn v14_core_db_out(
 #[substreams::handlers::map]
 fn map_v14_basket_events(
     blk: eth::Block,
-    addresses: StoreGetInt64,
 ) -> Result<contract::BasketEvents, substreams::errors::Error> {
     let mut events = map_basket_events_for(
         &blk,
         &contract::BasketRegistryEvents::default(),
-        &addresses,
+        None,
         BasketEventSelection {
             hooks: &[BASKET_HOOK],
             routers: &[BASKET_ROUTER],
@@ -1105,7 +1115,7 @@ mod tests {
             )
         };
         let blk = block(vec![trade(1), new, trade(3), trade(3)]);
-        let statics = static_events(&blk, |_, _| None);
+        let statics = static_events(&blk);
         assert_eq!(statics.events.len(), 1);
         let events = dynamic_events(&blk, &statics, |_| None);
         assert_eq!(events.events.len(), 1);
@@ -1130,9 +1140,7 @@ mod tests {
             1,
         );
         new.address = PUMP_V11.to_vec();
-        assert!(static_events(&block(vec![new]), |_, _| None)
-            .events
-            .is_empty());
+        assert!(static_events(&block(vec![new])).events.is_empty());
     }
     #[test]
     fn trade_curation_claims_discovered_in_same_transaction_and_future_blocks() {
@@ -1151,8 +1159,20 @@ mod tests {
             2,
         );
         let blk = block(vec![new, claim.clone()]);
-        let statics = static_events(&blk, |_, _| Some((TOKEN.into(), USER.into())));
-        let events = dynamic_events(&blk, &statics, |_| None);
+        let statics = static_events(&blk);
+        assert!(payload(&statics.events[0])["asset"].is_null());
+        assert!(payload(&statics.events[0])["owner"].is_null());
+        let mut events = dynamic_events(&blk, &statics, |_| None);
+        assert!(payload(&events.events[0])["asset"].is_null());
+        enrich_community_metadata(
+            &mut events.events[0],
+            |_, community| {
+                assert_eq!(community, ASSET);
+                Some(TOKEN.into())
+            },
+            |_, _| panic!("claims must not read the community owner"),
+            &contract::WalnutEvents::default(),
+        );
         let p = payload(&events.events[0]);
         assert_eq!(p["community"], ASSET);
         assert_eq!(p["asset"], TOKEN);
@@ -1202,10 +1222,10 @@ mod tests {
             vec![swap(1), fee(2)],
             vec![swap(1), fee(2), fee(3), swap(4)],
         ] {
-            let es = static_events(&block(logs), |_, _| None);
+            let es = static_events(&block(logs));
             assert!(es.events.iter().all(|e| !payload(e)["swap"].is_null()));
         }
-        let es = static_events(&block(vec![swap(1), fee(2), swap(3)]), |_, _| None);
+        let es = static_events(&block(vec![swap(1), fee(2), swap(3)]));
         assert!(payload(&es.events[0])["swap"].is_null());
         let e = &es.events[0];
         let changes = event_changes(e, None, None);
@@ -1462,6 +1482,57 @@ mod tests {
             .contains("production.sink_module.clone()"));
     }
     #[test]
+    fn v14_state_building_has_no_legacy_data_dependencies() {
+        let manifest = include_str!("../substreams.yaml");
+        let modules: BTreeMap<_, _> = manifest
+            .split("  - name: ")
+            .skip(1)
+            .map(|section| (section.lines().next().unwrap().trim(), section))
+            .collect();
+        let mut pending = vec![
+            "store_v14_addresses",
+            "store_v14_supply",
+            "store_v14_components",
+            "map_v14_static_events",
+            "map_v14_basket_events",
+        ];
+        let mut seen = BTreeSet::new();
+        while let Some(name) = pending.pop() {
+            if !seen.insert(name) {
+                continue;
+            }
+            assert!(
+                name.starts_with("store_v14_") || name.starts_with("map_v14_"),
+                "V14 state construction unexpectedly depends on {name}"
+            );
+            let section = modules[name];
+            let initial: u64 = section
+                .lines()
+                .find_map(|l| l.trim().strip_prefix("initialBlock: "))
+                .unwrap()
+                .parse()
+                .unwrap();
+            assert!(initial >= 83_024_792, "{name} starts before V14 deployment");
+            for line in section.lines() {
+                if let Some(input) = line
+                    .trim()
+                    .strip_prefix("- map: ")
+                    .or_else(|| line.trim().strip_prefix("- store: "))
+                {
+                    pending.push(input);
+                }
+            }
+        }
+        // Legacy enrichment remains required at the stateless SQL boundary.
+        for input in [
+            "store_walnut_contracts",
+            "store_walnut_owners",
+            "map_walnut_events",
+        ] {
+            assert!(modules["v14_core_db_out"].contains(input));
+        }
+    }
+    #[test]
     fn basket_v14_reuses_trade_semantics_without_replaying_registry_or_token_fees() {
         let hook = prefixed_hex(&BASKET_HOOK);
         let a = include_str!("../abi/basket_hook.abi.json");
@@ -1471,7 +1542,7 @@ mod tests {
         let es = map_basket_events_for(
             &blk,
             &contract::BasketRegistryEvents::default(),
-            &StoreGetInt64::new(0),
+            None,
             BasketEventSelection {
                 hooks: &[BASKET_HOOK],
                 routers: &[BASKET_ROUTER],
@@ -1495,13 +1566,45 @@ mod tests {
     }
     #[test]
     fn same_block_close_is_not_overwritten_by_trade_factory_metadata() {
-        let e = event(
+        let mut e = event(
             FACTORY,
             "TradeCurationCreated",
-            json!({"pool":POOL,"community":ASSET,"asset":TOKEN,"owner":USER,"name":"Trade","closedInBlock":true}),
+            json!({"pool":POOL,"community":ASSET,"name":"Trade"}),
             1,
         );
+        let legacy = contract::WalnutEvents {
+            events: vec![contract::WalnutEvent {
+                kind: "ADMINCLOSEPOOL".into(),
+                pool: bytes(POOL),
+                ..Default::default()
+            }],
+        };
+        enrich_community_metadata(
+            &mut e,
+            |ordinal, community| {
+                assert_eq!((ordinal, community), (101, ASSET));
+                Some(TOKEN.into())
+            },
+            |ordinal, community| {
+                assert_eq!((ordinal, community), (101, ASSET));
+                Some(USER.into())
+            },
+            &legacy,
+        );
         let changes = event_changes(&e, None, None);
+        assert_eq!(
+            field(&changes, "walnut_pools", POOL, "asset"),
+            Some(TOKEN.into())
+        );
+        assert_eq!(
+            field(
+                &changes,
+                "walnut_operations",
+                &event_id(&e.transaction_hash, 1),
+                "account"
+            ),
+            Some(USER.into())
+        );
         assert_eq!(
             field(&changes, "walnut_pools", POOL, "status"),
             Some("CLOSED".into())

@@ -922,8 +922,28 @@ again before cutover.
 
 The V14 local implementation and compatibility contract are in
 [`RH_V14_COMPATIBILITY.md`](RH_V14_COMPATIBILITY.md). Template version is
-`v0.6.0`; the new outputs are `v14_backfill_db_out` and
+`v0.6.1`; the new outputs are `v14_backfill_db_out` and
 `v14_continuation_db_out`. Earliest source block is Router deployment
 83,024,792; Pump deployment is 83,065,677. This is not a production release
 record. No service, production schema or cursor has been changed. Obtain exact
 server release identities before constructing the production continuation.
+
+V0.6.0 server probes were rejected before processing by `limit-processed-blocks`:
+the full graph estimated about 163 million stage-blocks, while the static map
+with only legacy Walnut dependencies estimated about 10.62 million. Old service
+logs at 11:05 +02:00 still showed stages near 77.76 million, below the earliest
+V14 deployment. These estimates are not counts of V14 events or proof of replayed
+SQL rows. V0.6.1 moves community metadata enrichment to the stateless SQL output,
+keeps V14 stores dependent only on new-domain history, and removes the unused
+Basket discovery-store input. Local 40 tests and build pass. Exact-server hash
+audit, full-output bounded replay and database gates are still pending.
+
+The operator selected direct V14 continuation if the final stopped legacy SQL
+cursor C is still below 83,024,792. V0.6.1 assembly now preserves the effective
+old output start for the new merge, including network overrides; new-domain
+starts stay at deployment. Start the accepted unified sink at C+1 with fresh
+cursor/history tables and strict hash checking, after migration and validation.
+Do not run a separate V14 historical backfill in this case. Re-read C after
+stopping the old writer; if it has passed the deployment boundary, revert to the
+domain-only backfill plan. See the V14 compatibility document for rollback and
+the full cutover gates. No production cutover has yet been performed.

@@ -1,0 +1,75 @@
+{
+  "status": "candidate-built-compatibility-passed-live-replay-precondition-failed",
+  "evidence": "Operator-provided server build, audit, sha256sum and module-hash output; no production installation or database migration performed.",
+  "sourceCommit": "3586eb3",
+  "sourceDirectory": "/root/tagai-substreams-rh",
+  "template": "tiptag-substreams-v0.6.0.spkg",
+  "tests": {
+    "passed": 39,
+    "failed": 0,
+    "reportedByOperator": true
+  },
+  "basePackage": {
+    "path": "/opt/tiptag-substreams/tiptag-v11-cutover-v0.5.3.spkg",
+    "sha256": "322550ec686f7c95e112b6462b365f2de4303cb8d2166c2b185d3dadd1747c6e",
+    "outputModule": "v11_continuation_db_out",
+    "outputHash": "40c74d5401d4caa30a8a38723d768b3ba3d627f1"
+  },
+  "compatibility": {
+    "sharedModules": 64,
+    "unchangedModules": 64,
+    "changedModules": 0,
+    "newModules": 10
+  },
+  "continuation": {
+    "file": "tiptag-v14-continuation-v0.6.0.spkg",
+    "sha256": "a38620076376eddee372531334341abcc5941118461c25f265cd6a4991fe679d",
+    "outputModule": "v14_continuation_db_out",
+    "outputHash": "82ae38f73caf59041f4040ec841433e22121dc4a"
+  },
+  "backfill": {
+    "file": "tiptag-v14-backfill-v0.6.0.spkg",
+    "sha256": "cac719ee464ac068b9c7dd6ab4bf134da3bda47c7c990d5b6b19b42a8c6e0222",
+    "outputModule": "v14_backfill_db_out",
+    "outputHash": "38202547b0034298fa6874078e97a470b230f1b2",
+    "initialBlock": 83024792
+  },
+  "liveReplay": {
+    "reportedByOperator": true,
+    "startBlock": 83065677,
+    "stopBlockExclusive": 83065678,
+    "productionMode": false,
+    "limitProcessedBlocks": 10000,
+    "estimatedProcessedBlocks": 163003678,
+    "estimatedStorePreparationBlocks": 163003000,
+    "processedBlocks": 0,
+    "receivedBlocks": 0,
+    "result": "FailedPrecondition: request exceeds limit-processed-blocks; cache reuse and store dependencies require investigation before backfill."
+  },
+  "productionModeReplay": {
+    "reportedByOperator": true,
+    "startBlock": 83065677,
+    "stopBlockExclusive": 83065678,
+    "productionMode": true,
+    "limitProcessedBlocks": 10000,
+    "estimatedProcessedBlocks": 162955000,
+    "estimatedStorePreparationBlocks": 162950000,
+    "processedBlocks": 0,
+    "receivedBlocks": 0,
+    "result": "FailedPrecondition; production mode alone did not resolve historical preparation. Do not increase the limit before isolating legacy dependencies/cache availability."
+  },
+  "staticEventsProbe": {
+    "reportedByOperator": true,
+    "outputModule": "map_v14_static_events",
+    "startBlock": 83065677,
+    "stopBlockExclusive": 83065678,
+    "productionMode": false,
+    "limitProcessedBlocks": 10000,
+    "estimatedProcessedBlocks": 10622678,
+    "estimatedStorePreparationBlocks": 10622000,
+    "processedBlocks": 0,
+    "receivedBlocks": 0,
+    "result": "FailedPrecondition. This map depends on preserved Walnut stores only, with no V14 or Basket stores. Check current legacy production progress before attributing the remaining preparation to cache loss or changing limits."
+  },
+  "cutoverBlock": null
+}
