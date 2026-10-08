@@ -1,7 +1,7 @@
 {
-  "status": "direct-continuation-running-catchup-and-event-write-validation-pending",
+  "status": "direct-continuation-running-first-nonzero-commit-confirmed-catchup-pending",
   "sourceCommit": "7ff3065",
-  "evidence": "Operator-provided build, package/hash audit, Pump probe, PostgreSQL migration and backups, stopped cursor boundary, successful bounded canary, and resumed timer/service logs. Catch-up and actual new-stream event writes are not yet confirmed.",
+  "evidence": "Operator-provided build, package/hash audit, Pump probe, PostgreSQL migration and backups, stopped boundary, successful bounded canary, timer/service logs, stage advancement and first nonzero new-stream SQL cursor. Catch-up, nonzero cursor resume and V14 SQL projections remain pending.",
   "sourceDirectory": "/root/tagai-substreams-rh",
   "package": {
     "file": "tiptag-v14-continuation-v0.6.1.spkg",
@@ -143,8 +143,19 @@
     "maxParallelWorkers": 5,
     "traceId": "a9e230446295b5b25ed548b8215a3b65"
   },
+  "firstNonzeroCommit": {
+    "reportedByOperator": true,
+    "oldCursorBlockUnchanged": 78241605,
+    "newOutputHash": "17a9486293f4cf6aaeb1b2e02724bae301332352",
+    "newCursorBlock": 78278926,
+    "newCursorBlockId": "1be0c0b5fb90b2006748259fcacb1ef806663294e86e4ce1d5e673a4f7cef5c9",
+    "matchesStreamLastBlock": true,
+    "observedLatestStageBlock": 78301000,
+    "stageObservationTimestamp": "2026-10-08T13:53:23+02:00",
+    "processedBlocksAtStageObservation": 646,
+    "note": "Stage counters advanced from 633 to 646 and SQL confirms the received block was committed under the new output hash. This remains before V14 deployment."
+  },
   "pendingValidation": [
-    "Normal-run stage progress and first nonzero SQL cursor",
     "Strict-hash resume from a nonzero committed cursor",
     "V14 event families and PostgreSQL projections when catch-up reaches deployment",
     "Downstream MySQL/API compatibility and acceptance",

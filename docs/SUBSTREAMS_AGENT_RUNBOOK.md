@@ -965,8 +965,11 @@ uses START_BLOCK while that cursor is zero.
 
 At 13:43:03 +02:00 the resumed timer requested [78,241,606, 78,341,606), with
 100,000 base blocks and 8,000,000 ceiling. Session initialization confirmed 5
-parallel workers. Later stage progress, actual SQL event writes and a nonzero
-cursor resume are still pending; deployment is not proof of completed catch-up
+parallel workers. At 13:53:23 +02:00 stages had advanced to about 78,301,000.
+The operator confirmed the new SQL cursor at block 78,278,926 with hash
+`1be0c0b5fb90b2006748259fcacb1ef806663294e86e4ce1d5e673a4f7cef5c9`,
+matching the received stream block, while the old cursor remained at 78,241,605.
+Nonzero cursor resume and V14 SQL projections remain pending; deployment is not proof of completed catch-up
 or V14 product acceptance. Before rollback, use the stopped database/config
 backup recorded in the JSON and review downstream state; do not simply resume
 the old cursor over writes already committed by the new sink.

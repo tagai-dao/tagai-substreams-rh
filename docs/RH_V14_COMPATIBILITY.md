@@ -3,7 +3,9 @@
 Status (2026-10-08): V0.6.1 direct continuation is installed and running from
 78,241,606 after schema migration and a successful 1,000-block no-event canary.
 The Pump static replay verified 52 approvals in one processed block. Normal-run
-progress, actual event writes, nonzero cursor resume, MySQL/API acceptance and
+stages advanced to about 78,301,000, and the new SQL cursor committed block
+78,278,926 while the stopped old cursor remained at 78,241,605. Catch-up to V14,
+V14 SQL projections, nonzero cursor resume, MySQL/API acceptance and
 rollback verification remain release gates. Server evidence and backup identities
 are in `deployments/4663/v14-v0.6.1-server-candidate.json`. Follow
 `SUBSTREAMS_AGENT_RUNBOOK.md`; give the operator one server command at a time and
@@ -240,8 +242,9 @@ shared aggregate contributions. Merely dropping V14 tables is not rollback.
 Local PostgreSQL integration remains pending because Docker is not running.
 The operator executed the server migration with COMMIT and verified all 11 new
 tables have primary keys. The exact installed server V0.5.3 artifact audit also
-passed (64 unchanged hashes). The startup canary had no events, so these checks
-do not yet validate actual SQL event writes or downstream projections.
+passed (64 unchanged hashes). The startup canary had no events; the subsequent
+normal run committed block 78,278,926 under the new output hash. V14 event-level
+SQL checks and downstream projections still require validation after catch-up.
 
 
 ## Local validation evidence
