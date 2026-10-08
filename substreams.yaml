@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.5.3
+  version: v0.6.0
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -25,6 +25,117 @@ binaries:
     file: ./target/wasm32-unknown-unknown/release/substreams.wasm
 
 modules:
+
+  # V14 additive domain: do not rename or rebuild preserved production modules.
+  - name: map_v14_static_events
+    kind: map
+    initialBlock: 83024792
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0xd72826378cb53182319f7a8b2882de4997ffc896 || evt_addr:0x3e1d75fba24037123235f937a2bd19af135c60cc || evt_addr:0xfc82178523687edd56f7474d6529a14f7655ab15 || evt_addr:0x73cb7a6ad01686659f72011eb952fba53fe6212b || evt_addr:0xf64b0e841a756b32e0848b609e9a0d1646ec00d9 || evt_addr:0x37176232fbe6cbb87643308350c2ac8265ba2719"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_walnut_contracts
+        mode: get
+      - store: store_walnut_owners
+        mode: get
+    output:
+      type: proto:contract.v1.V14Events
+
+  - name: store_v14_addresses
+    kind: store
+    initialBlock: 83024792
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_v14_static_events
+
+  - name: map_v14_dynamic_events
+    kind: map
+    initialBlock: 83065677
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_sig:0x83dab300a5913d81f08cb03bd001011951449acf2d5d93ccd7e025016133d88d || evt_sig:0xd0f0f531d3541100cbe1579c1db1e54765311ebda7239ca21c91f489bd8c9ae6 || evt_sig:0x66e12b29a25d1ddfc1d1a48d976d1c85f8004c1003179559cf2f658c3eedf39b || evt_sig:0x344fb83513fba098190d89cf23ad925951730b8ed6410ddada7be6daf819de09 || evt_sig:0xa57b3d7c26e39bdb326eaa73070e288e5914f2ed5fe7d27ae054161c67919fb5 || evt_sig:0xc4866710bdcc3491e67a60d191263f6c2766d77660f1215237f84e25ccdb6c87 || evt_sig:0xbca2a75ce3fd4fcf4d2f4a783d1d04f034d2d7f85da3e745f6ac2f19ac9e6655 || evt_sig:0xaa2336f50a27fa09264bebeb4bf28922ca6fc0382351a2c2d7cda13a4a068c23 || evt_sig:0x74beebcb41508a3651f8ab8f6ee9318bcf2e721ec973e146d4a943360de308e8 || evt_sig:0x72fd7af4765644aefa559b0dfb9093bb0b12fc5d97b14c0ba98fc7c6b19f4474 || evt_sig:0x9adcf0ad0cda63c4d50f26a48925cf6405df27d422a39c456b5f03f661c82982 || evt_sig:0x5e8bcc351296899534d8e3ce2a9100a0f20d7127a393e69f73819ae94723318b"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - map: map_v14_static_events
+      - store: store_v14_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.V14Events
+
+  - name: store_v14_supply
+    kind: store
+    initialBlock: 83065677
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_v14_dynamic_events
+
+  - name: store_v14_components
+    kind: store
+    initialBlock: 83065677
+    updatePolicy: set
+    valueType: string
+    inputs:
+      - map: map_v14_dynamic_events
+
+  - name: v14_core_db_out
+    kind: map
+    initialBlock: 83024792
+    inputs:
+      - map: map_v14_static_events
+      - map: map_v14_dynamic_events
+      - store: store_v14_supply
+        mode: get
+      - store: store_v14_components
+        mode: get
+      - map: map_walnut_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: map_v14_basket_events
+    kind: map
+    initialBlock: 83065587
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0x23627bae70f110407a46ee05970771cb3b25ea88 || evt_addr:0x47fcc4e4396bfb306e4cb60e53d366c7caf17971 || evt_addr:0xe2221f18ab7be5c830e853720966e5592f827d4d"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_basket_addresses
+        mode: get
+    output:
+      type: proto:contract.v1.BasketEvents
+
+  - name: v14_basket_db_out
+    kind: map
+    initialBlock: 83065587
+    inputs:
+      - map: map_v14_basket_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: v14_backfill_db_out
+    kind: map
+    initialBlock: 83024792
+    inputs:
+      - map: v14_core_db_out
+      - map: v14_basket_db_out
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: v14_continuation_db_out
+    kind: map
+    initialBlock: 83024792
+    inputs:
+      - map: v11_continuation_db_out
+      - map: v14_backfill_db_out
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
 
   # Additive V11 TagAI path. These modules intentionally do not reuse the
   # legacy module names, so an exact V0.4 graph can remain byte-for-byte
@@ -761,7 +872,9 @@ modules:
 network: robinhood
 
 sink:
-  module: db_out
+  # Development template only. Production must use make_v14_continuation
+  # with the exact installed SPKG, then verify every preserved module hash.
+  module: v14_continuation_db_out
   type: sf.substreams.sink.sql.v1.Service
   config:
     engine: postgres

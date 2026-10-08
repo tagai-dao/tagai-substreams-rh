@@ -1,0 +1,36 @@
+{
+  "status": "local-validation-only",
+  "sourceBaseCommit": "b895b5d7aeca4cf1eacca0d4b5004f2e9cfb3f61",
+  "sourceHasUncommittedV14Changes": true,
+  "rust": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "substreams": "substreams version 1.18.5 (Commit 94d29a9, Commit Date 2026-05-11T16:47:17Z)",
+  "tests": {
+    "passed": 39,
+    "failed": 0
+  },
+  "template": {
+    "file": "tiptag-substreams-v0.6.0.spkg",
+    "sha256": "cba41114330675f1aef4ad906a79dacb3f88ae790a4823e08f0b4e617620d36d",
+    "modules": {
+      "db_out": "2651b114973a0ad7689551d0c47bf0494676851d",
+      "v14_backfill_db_out": "75aef1844a5c9af5daeea8ee4c6ea9ec6e8f7b8d",
+      "v14_continuation_db_out": "bc5cb0c3896e9895ed6e5497b9489898324438d8"
+    }
+  },
+  "localCompatibility": {
+    "baseFile": "tiptag-v11-continuation-v0.5.2.spkg",
+    "baseSha256": "fd2f95e51284291c393a5e80f22fc12f6aa6624c99db3ee41b54ec6865794489",
+    "preservedModules": 64,
+    "changedModules": 0,
+    "addedModules": 10,
+    "productionIdentityVerified": false
+  },
+  "pending": [
+    "Actual production SPKG and active output/cursor identification",
+    "Operator SQL migration review and PostgreSQL execution",
+    "Bounded live Pinax fixtures for each event family",
+    "Database restart/resume, reorg and rollback checks",
+    "MySQL projection and API integration",
+    "Address-scoped component pair market data integration"
+  ]
+}

@@ -44,8 +44,16 @@ markets, Nutbox Router, Community Fee Hook, or IndexBroker.
 - Do not print secrets. Pinax credentials live in
   `/opt/tiptag-substreams/.substreams.env`; database secrets live in protected
   server environment files.
-- Database migrations are reviewed SQL artifacts. Show the operator the SQL
-  file and impact first; the operator executes production SQL.
+- For server PostgreSQL work (including queries and migrations), provide one
+  executable server command at a time; the operator runs it and returns the
+  output. For migrations, also prepare a reviewed SQL file and explain its
+  target database and impact before providing the execution command.
+- For TagAI MySQL migrations, send the complete SQL with its target database,
+  impact, and expected result; the operator executes it directly in MySQL.
+  A file path or shell command alone is not a substitute for this SQL.
+- Do not execute either database's migrations on the operator's behalf or
+  hide them in deployment scripts. Wait for the actual execution result
+  before proceeding to a dependent step.
 - Preserve unrelated local changes. `src/pb/.last_generated_hash` is generated
   build state and may change after code generation or a build.
 

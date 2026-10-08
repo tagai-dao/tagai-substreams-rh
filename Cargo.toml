@@ -19,6 +19,7 @@ substreams = "0.7"
 substreams-ethereum = "0.11"
 substreams-database-change = "4.0.0"
 base64 = "0.13"
+serde_json = "1"
 
 # Required so that ethabi > ethereum-types build correctly under wasm32-unknown-unknown
 [target.wasm32-unknown-unknown.dependencies]

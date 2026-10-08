@@ -335,3 +335,13 @@ message Pump_OwnershipTransferred {
     bytes new_owner = 6;
 }
   
+
+// V14 keeps the exact named ABI payload, including arrays and arbitrary uint256s.
+// Numeric ABI values are decimal strings; addresses/bytes are lowercase hex.
+message V14Events { repeated V14Event events = 1; }
+message V14Event {
+  string kind = 1; string source = 2; string payload = 3;
+  string transaction_hash = 4; uint32 log_index = 5;
+  uint64 block_number = 6; string block_hash = 7; int64 timestamp = 8;
+  uint64 ordinal = 9; string transaction_from = 10;
+}

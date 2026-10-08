@@ -1,0 +1,60 @@
+{
+  "status": "operator-reported-package-and-cursor-baseline",
+  "evidence": "Operator-provided configuration, sha256sum and partial substreams info output; full artifact not yet obtained or audited locally.",
+  "packagePath": "/opt/tiptag-substreams/tiptag-v11-cutover-v0.5.3.spkg",
+  "packageSha256": "322550ec686f7c95e112b6462b365f2de4303cb8d2166c2b185d3dadd1747c6e",
+  "outputModule": "v11_continuation_db_out",
+  "outputModuleHash": "40c74d5401d4caa30a8a38723d768b3ba3d627f1",
+  "configuredStartBlock": 54828616,
+  "moduleHashMismatchPolicy": "error",
+  "cursorsTable": "unified_v52_cutover_cursors",
+  "historyTable": "unified_v52_cutover_substreams_history",
+  "observedModuleHashesPartial": {
+    "map_token_events": "80813af41ae8ac4d20f56443ef12a1be5627d10c",
+    "map_swap_events": "dc82d09a575f03f088580d08fe63146d11d7836e",
+    "store_bonding_curve_supply": "081f04004220a9a947fb523ccc585c60d4dc05e2",
+    "store_entity_indexes": "237b67246f6e0338a761a99c732116b2a90e8bc8",
+    "nutbox_mining_db_out": "36c335c22b1bcfc5e5e00582693487ae59b884a1",
+    "basket_tvl_mining_db_out": "2a7fd46409e97324cc050a0e02ffcafb0527281e",
+    "basket_db_out": "227ff281de8f2df1a1204a0459dbf084ede3b202",
+    "legacy_db_out": "d17177fe5c77afe5fd17c6931d0ca9dbfd49ab92",
+    "db_out": "ac0a60e7d24c897f6357c285fb024adaf2a53ebf",
+    "v11_backfill_db_out": "5c06a8911b0039381607732a1af5d426db8c4f39",
+    "v11_continuation_db_out": "40c74d5401d4caa30a8a38723d768b3ba3d627f1",
+    "ethcommon:all_events": "433686393b184c57628660f7dbe6cfed4d72a9e9",
+    "ethcommon:index_events": "8375ddd2cb44363ab1691748ecb6303603f29568"
+  },
+  "database": "tiptag_rh",
+  "postgresContainer": "tiptag-substreams-postgres",
+  "observedCursors": [
+    {
+      "id": "40c74d5401d4caa30a8a38723d768b3ba3d627f1",
+      "blockNumber": 76050099,
+      "blockId": "bde4066728669e9594ab9d08eca461dbe8a365082a0057c39d1ee25670daaeee"
+    },
+    {
+      "id": "e95b7faea8a0cf5d017e7bcf338db554ffc59fb3",
+      "blockNumber": 54892462,
+      "blockId": "681c754efd710bca3a58685e7bb7200cdd66c6aee717df29f2f3f994ae284472"
+    }
+  ],
+  "cursorObservationNote": "Operator query: current package hash matches cursor at block 76050099, before earliest V14 deployment 83024792. Service/timer health and current progress not yet checked; this is not a cutover boundary.",
+  "incrementalWindowAdjustment": {
+    "configurationFile": "/etc/tiptag-unified-substreams.env",
+    "backupFile": "/etc/tiptag-unified-substreams.env.rh14-window.bak",
+    "ceilingBlocks": 8000000,
+    "operatorConfirmedEffective": true,
+    "observedWindowBlocks": 3200000,
+    "observedStartBlock": 76050100,
+    "observedTargetBlock": 79250099,
+    "observedChainTargetBlock": 83169919,
+    "note": "User-provided logs confirm the increased ceiling and window growth. Catch-up completion and cursor advancement have not yet been observed."
+  },
+  "serverSource": {
+    "path": "/root/tagai-substreams-rh",
+    "branch": "main",
+    "commit": "b895b5d7aeca4cf1eacca0d4b5004f2e9cfb3f61",
+    "workingTreeClean": true,
+    "evidence": "Operator-provided git status and git log output before V14 source update."
+  }
+}

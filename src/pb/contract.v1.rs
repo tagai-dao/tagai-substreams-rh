@@ -1002,4 +1002,36 @@ pub struct PumpOwnershipTransferred {
     #[prost(bytes="vec", tag="6")]
     pub new_owner: ::prost::alloc::vec::Vec<u8>,
 }
+/// V14 keeps the exact named ABI payload, including arrays and arbitrary uint256s.
+/// Numeric ABI values are decimal strings; addresses/bytes are lowercase hex.
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct V14Events {
+    #[prost(message, repeated, tag="1")]
+    pub events: ::prost::alloc::vec::Vec<V14Event>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct V14Event {
+    #[prost(string, tag="1")]
+    pub kind: ::prost::alloc::string::String,
+    #[prost(string, tag="2")]
+    pub source: ::prost::alloc::string::String,
+    #[prost(string, tag="3")]
+    pub payload: ::prost::alloc::string::String,
+    #[prost(string, tag="4")]
+    pub transaction_hash: ::prost::alloc::string::String,
+    #[prost(uint32, tag="5")]
+    pub log_index: u32,
+    #[prost(uint64, tag="6")]
+    pub block_number: u64,
+    #[prost(string, tag="7")]
+    pub block_hash: ::prost::alloc::string::String,
+    #[prost(int64, tag="8")]
+    pub timestamp: i64,
+    #[prost(uint64, tag="9")]
+    pub ordinal: u64,
+    #[prost(string, tag="10")]
+    pub transaction_from: ::prost::alloc::string::String,
+}
 // @@protoc_insertion_point(module)

@@ -1,0 +1,69 @@
+{
+  "chainId": 4663,
+  "sources": {
+    "original-broadcast.json": "bf2b5039d544dcce8235550f43a0e98f6cdd95b2575d3b8b55e6d04476f7af55",
+    "completed-broadcast.json": "2d7f874a923a04eb005c063a823b159a2168b64557245693aee183cbfc949506"
+  },
+  "contracts": [
+    {
+      "name": "NutboxRouter",
+      "address": "0xfc82178523687edd56f7474d6529a14f7655ab15",
+      "block": 83024792,
+      "transactionHash": "0xec4bf8bfb7cee097dd57e64ce7dd44e936c8234677f43e94dc91cd44a484cf62"
+    },
+    {
+      "name": "BasketRebalanceExecutorV3",
+      "address": "0xe2221f18ab7be5c830e853720966e5592f827d4d",
+      "block": 83065587,
+      "transactionHash": "0x95f36311ad905cb83b01a1f7aad1abf458659b5dab8753f37e6f1f21f72bfac5"
+    },
+    {
+      "name": "BasketHookV3",
+      "address": "0x23627bae70f110407a46ee05970771cb3b25ea88",
+      "block": 83065617,
+      "transactionHash": "0x98f9d338e8a99f950551681367f39c415c69ec299e66f5bd3a0404e2a5665b1b"
+    },
+    {
+      "name": "BasketSwapRouter",
+      "address": "0x47fcc4e4396bfb306e4cb60e53d366c7caf17971",
+      "block": 83065648,
+      "transactionHash": "0xc03f1686f38780c1c1d84050d8f9991c26053b3431bf26ea9e5f41eda023c3e8"
+    },
+    {
+      "name": "Pump",
+      "address": "0xd72826378cb53182319f7a8b2882de4997ffc896",
+      "block": 83065677,
+      "transactionHash": "0x0116d19f7cb9ad6a1855f6650188256f287e6eda0391bcc1be0eb3d1929ab257"
+    },
+    {
+      "name": "TagAISwapHook",
+      "address": "0x3e1d75fba24037123235f937a2bd19af135c60cc",
+      "block": 83065795,
+      "transactionHash": "0xb7a921bb45e76d8f5c087d18900d7a2a9d044e83ae966c141e98fb4ee5390e0f"
+    },
+    {
+      "name": "TagAIBuybackRouter",
+      "address": "0xc6e2bda3b0a3e014701b36ce1dfefe46a7e02690",
+      "block": 83065855,
+      "transactionHash": "0x1959642cddd35b7cdd715a2505af218fdfb62fd2bd7312cd291f5b5593ff689f"
+    },
+    {
+      "name": "TradeCurationFactory",
+      "address": "0x73cb7a6ad01686659f72011eb952fba53fe6212b",
+      "block": 83065912,
+      "transactionHash": "0xf8b4b1d4ea4ab54293ae33f161e8836ad6e552e7f3ee21e77ab624e8f5e83b83"
+    },
+    {
+      "name": "TagAITradeRouter",
+      "address": "0xf64b0e841a756b32e0848b609e9a0d1646ec00d9",
+      "block": 83066002,
+      "transactionHash": "0x68afebc856019a15e23e8f3d2da48262720a52ebc23f46bdd008c9414166fbd9"
+    },
+    {
+      "name": "TagAILiquidityRouter",
+      "address": "0x37176232fbe6cbb87643308350c2ac8265ba2719",
+      "block": 83066031,
+      "transactionHash": "0x6f1edfaf724b9e94d1b38c440b859e3bc6331d4baacf90c08234627c7de5c0cd"
+    }
+  ]
+}

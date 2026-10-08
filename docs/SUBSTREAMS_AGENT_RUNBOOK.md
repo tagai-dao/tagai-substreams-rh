@@ -916,3 +916,14 @@ again before cutover.
   validated.
 - End each release with a committed runbook update containing exact identities,
   cutover boundary, validation evidence, and rollback state.
+
+
+## 14. V14 development record (2026-10-08)
+
+The V14 local implementation and compatibility contract are in
+[`RH_V14_COMPATIBILITY.md`](RH_V14_COMPATIBILITY.md). Template version is
+`v0.6.0`; the new outputs are `v14_backfill_db_out` and
+`v14_continuation_db_out`. Earliest source block is Router deployment
+83,024,792; Pump deployment is 83,065,677. This is not a production release
+record. No service, production schema or cursor has been changed. Obtain exact
+server release identities before constructing the production continuation.
