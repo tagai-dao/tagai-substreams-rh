@@ -106,6 +106,30 @@ hexadecimal representation.
 The accepted production lag is currently 6,000 blocks. The service must not run
 at the same time as the older continuous unified unit.
 
+### Optional remote worker request
+
+`scripts/run-sink.sh` accepts `SUBSTREAMS_PARALLEL_WORKERS`, an optional positive
+integer. An unset or empty value preserves the provider default. A value such as
+`10` adds `--header "X-Substreams-Parallel-Workers: 10"` to the existing SQL sink
+invocation. This requests remote concurrency; it does not establish the account's
+quota or guarantee a speedup. Check `max_parallel_workers` in the subsequent
+session initialization and compare actual cursor advancement over time.
+
+The operator confirmed the installed SQL sink supports this header on 2026-10-09.
+The observed baseline is 5 workers. A request for 10 is a proposed experiment,
+not a verified production allocation. If the provider rejects the request,
+remove the setting and resume normally from the existing committed cursor.
+Keep the package, hashes, cursor/history tables and window unchanged during
+the experiment. Do not open a second SQL writer.
+
+Install the launcher atomically and update the service environment through the
+operator, one command at a time. The protected `.substreams.env` is loaded last
+and can override the setting. Let the current bounded run finish naturally;
+the next timer invocation can pick up the launcher and environment changes.
+No package rebuild or database migration is needed for this launcher option.
+
+### Run watchdog
+
 For a `Type=oneshot` service, use `TimeoutStartSec` to limit a run that remains
 in `activating`. `RuntimeMaxSec` does not protect the activation phase. The
 normal production watchdog is two hours; a deliberately large first-time

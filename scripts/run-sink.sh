@@ -18,6 +18,13 @@ if [[ -f "${PROJECT_DIR}/.substreams.env" ]]; then
   source "${PROJECT_DIR}/.substreams.env"
 fi
 
+SUBSTREAMS_PARALLEL_WORKERS="${SUBSTREAMS_PARALLEL_WORKERS:-}"
+if [[ -n "${SUBSTREAMS_PARALLEL_WORKERS}" ]] &&
+  ! [[ "${SUBSTREAMS_PARALLEL_WORKERS}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "SUBSTREAMS_PARALLEL_WORKERS must be a positive integer or empty" >&2
+  exit 1
+fi
+
 args=(
   run
   "${DATABASE_URL}"
@@ -32,6 +39,10 @@ args=(
 
 if [[ -n "${STOP_BLOCK}" ]]; then
   args+=(--stop-block "${STOP_BLOCK}")
+fi
+
+if [[ -n "${SUBSTREAMS_PARALLEL_WORKERS}" ]]; then
+  args+=(--header "X-Substreams-Parallel-Workers: ${SUBSTREAMS_PARALLEL_WORKERS}")
 fi
 
 exec "${PROJECT_DIR}/bin/substreams-sink-sql" "${args[@]}"
