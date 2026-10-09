@@ -8,6 +8,11 @@ contract addresses, read `docs/SUBSTREAMS_AGENT_RUNBOOK.md` in full. Also read
 `docs/RH_V11_COMPATIBILITY.md` when the change touches V11, Basket V3, imported
 markets, Nutbox Router, Community Fee Hook, or IndexBroker.
 
+For RH V14 and subsequent feature work, start with `docs/RH_V14_HANDOFF.md` for
+the development method, last operator-confirmed server snapshot and remaining
+gates. Re-read live state through the operator before using any saved cursor,
+package or configuration value; the handoff is not real-time monitoring.
+
 ## Non-negotiable rules
 
 - Work with the operator one production step at a time. State the expected

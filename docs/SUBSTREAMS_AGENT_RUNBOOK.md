@@ -5,6 +5,10 @@ upgrading the TipTag Robinhood Chain indexer. It is written for both operators
 and future coding agents. Historical migration documents remain useful as
 evidence, but this runbook takes precedence for current operations.
 
+For the RH V14 development method, latest operator-confirmed configuration,
+progress and next steps, start with [`RH_V14_HANDOFF.md`](RH_V14_HANDOFF.md).
+Its state is a dated snapshot and must be re-verified through the operator.
+
 ## 1. System boundaries
 
 The production data path is:
@@ -116,8 +120,10 @@ quota or guarantee a speedup. Check `max_parallel_workers` in the subsequent
 session initialization and compare actual cursor advancement over time.
 
 The operator confirmed the installed SQL sink supports this header on 2026-10-09.
-The observed baseline is 5 workers. A request for 10 is a proposed experiment,
-not a verified production allocation. If the provider rejects the request,
+The operator subsequently confirmed the free plan is capped at 5 workers, so
+the proposed 10-worker experiment was cancelled. Launcher support was committed
+as `5fba833`, but installation on the server was not confirmed. Do not configure
+a higher request on this plan. If a later plan permits an experiment and rejects the request,
 remove the setting and resume normally from the existing committed cursor.
 Keep the package, hashes, cursor/history tables and window unchanged during
 the experiment. Do not open a second SQL writer.
@@ -144,6 +150,11 @@ TimeoutStartSec=2h
 RuntimeMaxSec=infinity
 TimeoutStopSec=90
 ```
+
+These are template/recommended values. On 2026-10-09 the operator queried the
+actual RH service and confirmed `TimeoutStartUSec=12h` and
+`TimeoutStopUSec=1min 30s`. Inspect the effective unit before evaluating whether
+a larger catch-up window can complete within its watchdog.
 
 ## 3. Release identity and cursor invariants
 
@@ -942,7 +953,7 @@ again before cutover.
   cutover boundary, validation evidence, and rollback state.
 
 
-## 14. V14 deployment and catch-up record (2026-10-08)
+## 14. V14 deployment and catch-up record (2026-10-08 through 2026-10-09)
 
 The V14 local implementation and compatibility contract are in
 [`RH_V14_COMPATIBILITY.md`](RH_V14_COMPATIBILITY.md). Template version is
@@ -997,8 +1008,22 @@ Operator logs reported on 2026-10-09 confirm automatic nonzero cursor resume:
 80,829,891 resumes at 80,829,892, then 80,912,095 resumes at 80,912,096.
 Unchanged cursor windows grew from 100,000 to 200,000 to 400,000 blocks;
 advancement reset the next window to 100,000. The ceiling remains 8,000,000.
-The latest reported committed cursor is still 2,112,697 blocks below the earliest
-V14 deployment. V14 SQL projections remain pending; deployment is not proof of completed catch-up
+Those 100,000-block windows describe the initial run, not the current setting.
+On 2026-10-09 the operator changed the base to 300,000 with the ceiling unchanged;
+the next invocation at 05:24:20 +02:00 picked it up naturally. No restart or
+SPKG/cursor change was required. Completed runs advanced to 81,192,097 at
+06:37:50 and 81,489,309 at 08:17:54. Their combined observed advancement was
+about 55.4 chain-height blocks/sec, versus about 46 in the earlier sample;
+different intervals/cache states make this an observation, not a benchmark.
+The free plan's 5-worker cap was confirmed, so no 10-worker experiment ran.
+The actual server start watchdog is 12 hours, unlike the repository template.
+
+At 08:17:55 +02:00 the next range started at 81,489,310 and targeted 81,789,309
+(exclusive stop 81,789,310). At 09:41:14 the received output was 81,714,795 and
+stage positions ranged from 81,712,000 to 81,722,000, with 5 jobs reported.
+The latest confirmed committed cursor remains 81,489,309, still 1,535,483 blocks
+below the earliest V14 deployment. Do not substitute received/stage heights for
+database commits. V14 SQL projections remain pending; deployment is not proof of completed catch-up
 or V14 product acceptance. Before rollback, use the stopped database/config
 backup recorded in the JSON and review downstream state; do not simply resume
 the old cursor over writes already committed by the new sink.

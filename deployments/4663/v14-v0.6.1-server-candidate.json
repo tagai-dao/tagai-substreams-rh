@@ -171,6 +171,81 @@
     "blocksToEarliestV14Deployment": 2112697,
     "note": "Automatic resume proceeds at the committed cursor plus one under the configured strict hash policy. Latest block ID was not supplied; V14 deployment has not yet been reached."
   },
+  "currentServerSnapshot": {
+    "reportedByOperator": true,
+    "observedAt": "2026-10-09T09:41:14+02:00",
+    "observedAtBeijing": "2026-10-09T15:41:14+08:00",
+    "host": "vmi3433492",
+    "database": "tiptag_rh",
+    "postgresContainer": "tiptag-substreams-postgres",
+    "postgresImage": "postgres:17",
+    "environmentFilesInLoadOrder": [
+      "/etc/tiptag-unified-substreams.env",
+      "/opt/tiptag-substreams/.substreams.env"
+    ],
+    "baseWindowBlocks": 300000,
+    "ceilingBlocks": 8000000,
+    "lagBlocks": 6000,
+    "moduleHashMismatchPolicy": "error",
+    "cursorId": "17a9486293f4cf6aaeb1b2e02724bae301332352",
+    "cursorsTable": "unified_v14_cursors",
+    "historyTable": "unified_v14_substreams_history",
+    "configuredStartBlock": 78241606,
+    "timeoutStart": "12h",
+    "timeoutStop": "90s",
+    "providerMode": "Production",
+    "freePlanWorkerCapConfirmedByOperator": 5,
+    "tenWorkerExperiment": "cancelled after the operator confirmed the free plan cap; launcher commit 5fba833 installation was not confirmed",
+    "windowChangeBackup": "/etc/tiptag-unified-substreams.env.before-window-300k.20261009T031241Z",
+    "windowChangeEffectiveAt": "2026-10-09T05:24:20+02:00",
+    "latestConfirmedCommittedCursor": {
+      "block": 81489309,
+      "blockId": null,
+      "observedAt": "2026-10-09T08:17:54+02:00",
+      "evidence": "incremental_window_state cursorBlockAfter, read from PostgreSQL by the wrapper"
+    },
+    "activeRun": {
+      "startedAt": "2026-10-09T08:17:55+02:00",
+      "wrapperPid": 36680,
+      "sinkPid": 36702,
+      "resolvedStartBlock": 81489310,
+      "targetBlock": 81789309,
+      "stopBlockExclusive": 81789310,
+      "chainHeadAtRunStart": 83939902,
+      "chainTargetAtRunStart": 83933902,
+      "lastReceivedBlock": 81714795,
+      "lastReceivedBlockId": "3c145603e919942281a2547d323ea1557844f5eb18b4202edd10105d8e4891dc",
+      "receivedBlockConfirmedCommitted": false,
+      "stageBlocks": [81722000, 81719000, 81718000, 81712000, 81714000],
+      "runningJobsByStage": [3, 1, 1, 0, 0],
+      "processedBlocksReported": 4005,
+      "completionObserved": false
+    },
+    "completed300kRuns": [
+      {
+        "startedAt": "2026-10-09T05:24:20+02:00",
+        "completedAt": "2026-10-09T06:37:50+02:00",
+        "cursorBefore": 80912095,
+        "cursorAfter": 81192097,
+        "durationSeconds": 4410,
+        "advancedBlocks": 280002
+      },
+      {
+        "startedAt": "2026-10-09T06:37:51+02:00",
+        "completedAt": "2026-10-09T08:17:54+02:00",
+        "cursorBefore": 81192097,
+        "cursorAfter": 81489309,
+        "durationSeconds": 6003,
+        "advancedBlocks": 297212
+      }
+    ],
+    "combinedObservedAdvanceBlocksPerSecond": 55.4313,
+    "committedBlocksAdvancedSinceCutover": 3247704,
+    "blocksFromConfirmedCursorToEarliestV14Deployment": 1535483,
+    "v14TableRowsRechecked": false,
+    "note": "Dated operator evidence, not live state. Historical observation fields above remain intact. Current run received/stage heights are not database commit proof; refresh before operational decisions."
+  },
+  "handoffDocument": "docs/RH_V14_HANDOFF.md",
   "pendingValidation": [
     "V14 event families and PostgreSQL projections when catch-up reaches deployment",
     "Downstream MySQL/API compatibility and acceptance",

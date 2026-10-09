@@ -3,6 +3,13 @@
 Substreams-powered replacement for the TipTag `rh` subgraph on Robinhood Chain
 (EIP-155 chain ID 4663).
 
+For the current RH V14 deployment, development method and operator-confirmed
+server snapshot, start with [`docs/RH_V14_HANDOFF.md`](docs/RH_V14_HANDOFF.md),
+then the canonical [`operations runbook`](docs/SUBSTREAMS_AGENT_RUNBOOK.md).
+The V14 unified continuation is running but catch-up and downstream acceptance
+remain pending. The package layouts below include historical deployments;
+do not apply them over the current service without checking the runbook.
+
 The package replaces the RH TipTag subgraph's Pump, dynamic Token, IPShare,
 SwapHook/PoolManager, and active Walnut factory/template mappings. It maintains
 fork-aware state stores and writes queryable current state plus immutable event

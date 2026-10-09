@@ -4,14 +4,19 @@ Status (2026-10-09): V0.6.1 direct continuation is installed and running from
 78,241,606 after schema migration and a successful 1,000-block no-event canary.
 The Pump static replay verified 52 approvals in one processed block. Normal-run
 SQL first committed block 78,278,926 while the stopped old cursor remained at
-78,241,605. Subsequent operator logs confirm cursor advancement to 80,912,095
-and automatic resume at 80,912,096. Windows expand on unchanged cursors and
-reset to 100,000 blocks after advancement. Catch-up to V14,
+78,241,605. Subsequent operator logs confirm cursor advancement to 81,489,309
+at 08:17:54 +02:00 and automatic resume at 81,489,310. The latest stream log at
+09:41:14 +02:00 reports output block 81,714,795; that is not proof of SQL commit.
+Windows expand on unchanged cursors and reset to the current 300,000-block base
+after advancement, capped at 8,000,000. The free plan supports 5 workers and the
+actual server start timeout is 12 hours. Catch-up to V14,
 V14 SQL projections, MySQL/API acceptance and
 rollback verification remain release gates. Server evidence and backup identities
 are in `deployments/4663/v14-v0.6.1-server-candidate.json`. Follow
 `SUBSTREAMS_AGENT_RUNBOOK.md`; give the operator one server command at a time and
 inspect its actual output before the next command. Keep production indexing on.
+The development handoff and dated operational snapshot are in
+[`RH_V14_HANDOFF.md`](RH_V14_HANDOFF.md); re-read live state before acting.
 
 ## Source identity
 
