@@ -969,7 +969,12 @@ parallel workers. At 13:53:23 +02:00 stages had advanced to about 78,301,000.
 The operator confirmed the new SQL cursor at block 78,278,926 with hash
 `1be0c0b5fb90b2006748259fcacb1ef806663294e86e4ce1d5e673a4f7cef5c9`,
 matching the received stream block, while the old cursor remained at 78,241,605.
-Nonzero cursor resume and V14 SQL projections remain pending; deployment is not proof of completed catch-up
+Operator logs reported on 2026-10-09 confirm automatic nonzero cursor resume:
+80,829,891 resumes at 80,829,892, then 80,912,095 resumes at 80,912,096.
+Unchanged cursor windows grew from 100,000 to 200,000 to 400,000 blocks;
+advancement reset the next window to 100,000. The ceiling remains 8,000,000.
+The latest reported committed cursor is still 2,112,697 blocks below the earliest
+V14 deployment. V14 SQL projections remain pending; deployment is not proof of completed catch-up
 or V14 product acceptance. Before rollback, use the stopped database/config
 backup recorded in the JSON and review downstream state; do not simply resume
 the old cursor over writes already committed by the new sink.

@@ -1,7 +1,7 @@
 {
-  "status": "direct-continuation-running-first-nonzero-commit-confirmed-catchup-pending",
+  "status": "direct-continuation-running-nonzero-resume-confirmed-catchup-pending",
   "sourceCommit": "7ff3065",
-  "evidence": "Operator-provided build, package/hash audit, Pump probe, PostgreSQL migration and backups, stopped boundary, successful bounded canary, timer/service logs, stage advancement and first nonzero new-stream SQL cursor. Catch-up, nonzero cursor resume and V14 SQL projections remain pending.",
+  "evidence": "Operator-provided build, package/hash audit, Pump probe, PostgreSQL migration and backups, stopped boundary, successful bounded canary, timer/service logs, stage advancement, first nonzero new-stream SQL cursor and subsequent automatic nonzero cursor resume. Catch-up and V14 SQL projections remain pending.",
   "sourceDirectory": "/root/tagai-substreams-rh",
   "package": {
     "file": "tiptag-v14-continuation-v0.6.1.spkg",
@@ -155,8 +155,23 @@
     "processedBlocksAtStageObservation": 646,
     "note": "Stage counters advanced from 633 to 646 and SQL confirms the received block was committed under the new output hash. This remains before V14 deployment."
   },
+  "automaticResumeValidation": {
+    "reportedByOperator": true,
+    "reportDate": "2026-10-09",
+    "source": "incremental_window_state and incremental_target logs",
+    "cursorResumePairs": [
+      { "committedBlock": 80829891, "nextStartBlock": 80829892 },
+      { "committedBlock": 80912095, "nextStartBlock": 80912096 }
+    ],
+    "unchangedCursorWindows": [100000, 200000, 400000],
+    "windowAfterAdvancement": 100000,
+    "ceilingBlocks": 8000000,
+    "latestReportedCommittedBlock": 80912095,
+    "latestReportedChainTargetBlock": 83813832,
+    "blocksToEarliestV14Deployment": 2112697,
+    "note": "Automatic resume proceeds at the committed cursor plus one under the configured strict hash policy. Latest block ID was not supplied; V14 deployment has not yet been reached."
+  },
   "pendingValidation": [
-    "Strict-hash resume from a nonzero committed cursor",
     "V14 event families and PostgreSQL projections when catch-up reaches deployment",
     "Downstream MySQL/API compatibility and acceptance",
     "Reorg and backup restoration verification"

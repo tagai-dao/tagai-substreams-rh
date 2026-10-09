@@ -1,11 +1,13 @@
 # RH V14 additive indexing
 
-Status (2026-10-08): V0.6.1 direct continuation is installed and running from
+Status (2026-10-09): V0.6.1 direct continuation is installed and running from
 78,241,606 after schema migration and a successful 1,000-block no-event canary.
 The Pump static replay verified 52 approvals in one processed block. Normal-run
-stages advanced to about 78,301,000, and the new SQL cursor committed block
-78,278,926 while the stopped old cursor remained at 78,241,605. Catch-up to V14,
-V14 SQL projections, nonzero cursor resume, MySQL/API acceptance and
+SQL first committed block 78,278,926 while the stopped old cursor remained at
+78,241,605. Subsequent operator logs confirm cursor advancement to 80,912,095
+and automatic resume at 80,912,096. Windows expand on unchanged cursors and
+reset to 100,000 blocks after advancement. Catch-up to V14,
+V14 SQL projections, MySQL/API acceptance and
 rollback verification remain release gates. Server evidence and backup identities
 are in `deployments/4663/v14-v0.6.1-server-candidate.json`. Follow
 `SUBSTREAMS_AGENT_RUNBOOK.md`; give the operator one server command at a time and
