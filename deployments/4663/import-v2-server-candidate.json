@@ -1,0 +1,158 @@
+{
+  "chainId": 4663,
+  "status": "isolated_backfill_running_under_systemd_unified_cutover_pending",
+  "productionReady": false,
+  "sourceImplementationCommit": "6a046af",
+  "serverGitCommitConfirmed": false,
+  "serverToolchainVersionsConfirmed": false,
+  "productionBase": {
+    "path": "/opt/tiptag-substreams/tiptag-v14-continuation-v0.6.1.spkg",
+    "sha256": "1af895c7b2f27f3bb978c1688f688ac1d1560fe104b200ef841b08cc4c8c3c14",
+    "outputModule": "v14_continuation_db_out",
+    "outputModuleHash": "17a9486293f4cf6aaeb1b2e02724bae301332352"
+  },
+  "continuation": {
+    "file": "tiptag-import-v2-continuation-v0.7.0.spkg",
+    "sha256": "7dba55e72ca23cc524d8085636a94a087c5f6f632c6e04b1c257d221f537b125",
+    "outputModule": "import_v2_continuation_db_out",
+    "initialBlock": 53869281,
+    "outputModuleHash": "d971756177525a8da560588154366400a9f48164"
+  },
+  "backfill": {
+    "file": "tiptag-import-v2-backfill-v0.7.0.spkg",
+    "sha256": "a3d04f579b08a338d51667eff22e4ba0f05206a689b7a16f20fbf40bda7724f2",
+    "outputModule": "import_v2_backfill_db_out",
+    "initialBlock": 54128714,
+    "outputModuleHash": "aacb951d3546d75d6aa6da6abe764feb48f56cee"
+  },
+  "compatibility": {"shared": 74, "unchanged": 74, "changed": 0, "added": 3},
+  "operatorReportedTests": {"libraryPassed": 47, "assemblerPassed": 2},
+  "postgresSchemaMigration": {
+    "database": "tiptag_rh",
+    "schema": "public",
+    "script": "scripts/migrate-rh-import-v2-schema.sql",
+    "operatorReportedCommit": true,
+    "createdTables": 3,
+    "createdIndexes": 2,
+    "postMigrationReadCheckCompleted": true,
+    "tablesWithPrimaryKey": 3,
+    "eventsBeforeBackfill": 0,
+    "marketsBeforeBackfill": 0,
+    "tradesBeforeBackfill": 0
+  },
+  "preCutoverRunningCheckpoint": {
+    "table": "unified_v14_cursors",
+    "outputModuleHash": "17a9486293f4cf6aaeb1b2e02724bae301332352",
+    "blockNumber": 85970291,
+    "blockId": "6252c4a1dacfed0a2dc0a065665a66d288d41227e4384ba0e6877380ef797091",
+    "finalStoppedBoundary": false
+  },
+  "cutoverBoundary": {
+    "outputModuleHash": "17a9486293f4cf6aaeb1b2e02724bae301332352",
+    "blockNumber": 85970291,
+    "blockId": "6252c4a1dacfed0a2dc0a065665a66d288d41227e4384ba0e6877380ef797091",
+    "nextStartBlock": 85970292,
+    "operatorReturnedCheckpointAfterStopCommand": true,
+    "stopCommandIncludesMainPidZeroGuard": true,
+    "systemdStatusOutputRecorded": true,
+    "stoppedBackupCompleted": true,
+    "backupCommandConfirmedServiceMainPidZero": true,
+    "backupCommandConfirmedTimerInactive": true
+  },
+  "stoppedCutoverBackup": {
+    "path": "/root/backups/tiptag-rh-import-v2-cutover-85970291-20261012T085902Z.dump",
+    "sha256": "44bbffa80bc110a928256e19471af4fa2774190540a2d388018655c3a76de416",
+    "sizeReported": "2.3M",
+    "tocPath": "/root/backups/tiptag-rh-import-v2-cutover-85970291-20261012T085902Z.dump.toc",
+    "tocReadable": true,
+    "configurationBackupPrefix": "/root/backups/tiptag-rh-import-v2-cutover-85970291-20261012T085902Z",
+    "productionIndexerStopped": true,
+    "restoreTestCompleted": false
+  },
+  "backfillSystemTables": {
+    "cursors": "import_v2_backfill_cursors",
+    "history": "import_v2_backfill_substreams_history",
+    "operatorReportedSetupCompleted": true,
+    "moduleHashMismatchPolicy": "error",
+    "backfillStarted": true,
+    "startBlock": 54128714,
+    "stopBlockExclusive": 85970292,
+    "logPath": "/root/backups/rh-import-v2-backfill-to-85970291.log",
+    "firstPostgresFlushReported": true,
+    "lastReportedPostgresBlock": 54128714,
+    "lastReportedStreamBlock": 54128775,
+    "lastReportedStage0Block": 54160000,
+    "lastReportedRunningJobs": 5,
+    "lastReportedProcessedBlocks": 2,
+    "lastReportTimestamp": "2026-10-12T11:01:51.520610211+02:00",
+    "operatorInterruptedForegroundRun": true,
+    "resumePreflight": {
+      "oldTimerActiveState": "inactive",
+      "oldServiceActiveState": "failed",
+      "oldServiceMainPid": 0,
+      "backfillProcessFound": false
+    },
+    "plannedResumeService": "tiptag-import-v2-backfill.service",
+    "systemdResumeProof": {
+      "service": "tiptag-import-v2-backfill.service",
+      "mainPidAtReport": 818489,
+      "activeStateAtReport": "activating",
+      "subStateAtReport": "start",
+      "mode": "Production",
+      "moduleCount": 77,
+      "outputModuleHash": "aacb951d3546d75d6aa6da6abe764feb48f56cee",
+      "checkpointBlock": 54360564,
+      "checkpointBlockId": "f19c8fea7969ea4747dc81b22a87c9cb077cc2908c549676b228a90f26f29292",
+      "resolvedStartBlock": 54360565,
+      "stopBlockExclusive": 85970292,
+      "maxParallelWorkers": 5,
+      "sessionTimestamp": "2026-10-12T11:10:31.445154982+02:00"
+    },
+    "rangeCompleted": false
+  },
+  "continuationSystemTables": {
+    "cursors": "unified_import_v2_cursors",
+    "history": "unified_import_v2_substreams_history",
+    "operatorReportedSetupCompleted": true,
+    "moduleHashMismatchPolicy": "error",
+    "continuationStarted": false
+  },
+  "preMigrationBackup": {
+    "path": "/root/backups/tiptag-rh-before-import-v2-20261012T084934Z.dump",
+    "sha256": "4a93174d0ea3b15e2586556d0ea54bcafe6a6b780b17329aa103b1601f9208cb",
+    "sizeReported": "2.3M",
+    "tocPath": "/root/backups/tiptag-rh-before-import-v2-20261012T084934Z.dump.toc",
+    "tocReadable": true,
+    "productionIndexerStopped": false,
+    "restoreTestCompleted": false
+  },
+  "readOnlyPinaxProbes": [
+    {
+      "startBlock": 86448655,
+      "stopBlockExclusive": 86448656,
+      "processedBlocks": 1,
+      "receivedBlocks": 1,
+      "eventRows": 4,
+      "source": "0x70ed7c79d80dede1828a09b3c526df283111cb82",
+      "kinds": ["OwnershipTransferred", "OwnershipTransferred", "PoolFactorySet", "DefaultPoolsSet"],
+      "logIndices": [40, 41, 42, 43],
+      "matchesPublicDeploymentReceipt": true
+    },
+    {
+      "startBlock": 54128714,
+      "stopBlockExclusive": 54128715,
+      "eventRows": 1,
+      "source": "0x53e65de68a0eb7f3662579f44eb9849ae5ca44ab",
+      "kinds": ["OwnershipTransferred"],
+      "logIndices": [63],
+      "matchesPublicDeploymentReceipt": true
+    }
+  ],
+  "remainingGates": [
+    "server Git commit and toolchain version recording",
+    "PostgreSQL isolated backfill and row validation",
+    "final stopped cutover boundary, unified canary and restart/resume",
+    "MySQL v47 migration and downstream service rollout",
+    "real import, buy/sell, reward and claim acceptance"
+  ]
+}

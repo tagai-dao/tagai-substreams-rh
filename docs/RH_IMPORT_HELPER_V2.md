@@ -1,6 +1,7 @@
 # RH ImportHelperV2 索引与发布记录
 
-2026-10-12：本地实现已完成；生产部署、Pinax 有界回放、SQL 入库、续跑和产品验收待操作员逐步执行。
+2026-10-12：本地实现已完成；操作员已通过服务器构建、精确旧包兼容审计和两个部署块的 Pinax 只读回放。
+PostgreSQL 迁移及停稳备份已完成，独立域历史补索引已正式启动；范围完成、统一索引切换、续跑和产品验收仍待操作员逐步执行。
 本文件接续 `SUBSTREAMS_AGENT_RUNBOOK.md`、`RH_V11_COMPATIBILITY.md` 和 `RH_V14_HANDOFF.md`。
 开发期间保持生产索引运行；服务器一次给一个命令，收到真实结果后再给下一步。
 
@@ -68,6 +69,77 @@ filters 和 network overrides，并继承实际旧输出起点。缺少旧模块
 派生 `import_v2_backfill_db_out` 包；分别记录两个包 checksum 和输出 hash。
 本地模板/本地历史模板组装结果仅用于结构验证，不是生产发布身份。
 
+### 本次操作员确认的服务器候选包
+
+实际身份及已通过门槛记录在 `deployments/4663/import-v2-server-candidate.json`：
+
+| 输出 | SPKG SHA-256 | 模块 hash | 起点 |
+| --- | --- | --- | ---: |
+| continuation | `7dba55e72ca23cc524d8085636a94a087c5f6f632c6e04b1c257d221f537b125` | `d971756177525a8da560588154366400a9f48164` | 53,869,281 |
+| backfill | `a3d04f579b08a338d51667eff22e4ba0f05206a689b7a16f20fbf40bda7724f2` | `aacb951d3546d75d6aa6da6abe764feb48f56cee` | 54,128,714 |
+
+服务器 47 个 library tests、2 个 assembler tests 通过，旧模块审计为 74/74 unchanged、0 changed。
+新 Helper 部署块 86,448,655 的回放报告处理/接收各 1 块；输出 4 行独立事件，日志位置 40–43，
+默认 Trade Curation 工厂比例 10000。Wrapper 部署块 54,128,714 输出 1 行 OwnershipTransferred，
+日志位置 63。两组事件的地址、交易和区块 hash 均与已核验公开收据一致。
+只读输出均仅涉及 `import_v2_events`；这不是 PostgreSQL 入库或真实交易业务验收。
+服务器 Git 完整 commit 和工具版本仍待记录；当前生产包和游标尚未切换。
+
+迁移前备份（生产索引仍运行，并非最终停稳切换备份）：
+`/root/backups/tiptag-rh-before-import-v2-20261012T084934Z.dump`，操作员报告大小 2.3M，
+SHA-256 `4a93174d0ea3b15e2586556d0ea54bcafe6a6b780b17329aa103b1601f9208cb`。
+`pg_restore --list` 读取成功，35K 目录保存在同路径 `.toc` 文件；尚未执行恢复演练。
+操作员随后在 `tiptag_rh` / `public` 执行迁移，回传 3 次 CREATE TABLE、2 次 CREATE INDEX
+和 COMMIT。随后只读检查确认 3 张表均有主键，事件/市场/成交计数均为 0，
+旧游标仍为 85,970,291，block ID 与前次一致。补索引与统一包切换尚未完成，
+该运行中游标仍不能作为最终停稳边界。
+操作员已用 backfill 包运行 `setup --system-tables-only`，专用系统表为
+`import_v2_backfill_cursors` / `import_v2_backfill_substreams_history`，hash policy 为 error；
+回传 setup completed successfully。此步骤仅准备系统表，历史补索引尚未启动。
+统一包的 `setup --system-tables-only` 也已回传成功，系统表为
+`unified_import_v2_cursors` / `unified_import_v2_substreams_history`，hash policy 同样为 error。
+该准备步骤完成时仍未启动新 sink，也未停止旧索引；操作员负责实际启停服务。
+
+随后用户要求优先完成索引，暂不调整应用侧服务。给出的停止命令按顺序停止旧 timer/service，
+包含 MainPID=0 的检查，然后读取旧游标。操作员回传边界 C=85,970,291，
+block ID `6252c4a1dacfed0a2dc0a065665a66d288d41227e4384ba0e6877380ef797091`，
+新统一输出起点 C+1=85,970,292。回传未包含 systemd 状态段，停稳备份步骤再次检查停机状态。
+先完成独立域补索引和统一索引；应用侧部署与新来源身份配置仍留在索引验收之后，
+不得提前让下游切到尚未就绪的 `unified_import_v2_cursors`。
+
+停稳备份已通过操作员检查（命令先检查 service MainPID=0 和 timer inactive）：
+`/root/backups/tiptag-rh-import-v2-cutover-85970291-20261012T085902Z.dump`，2.3M，
+SHA-256 `44bbffa80bc110a928256e19471af4fa2774190540a2d388018655c3a76de416`。
+同前缀 `.dump.toc` 可读；`.env` / `.substreams.env` 为受限权限的配置备份，不记录秘密内容。
+独立域补索引目标为 `[54,128,714, 85,970,292)`，新 Helper 部署块在该范围之后，
+其部署及业务事件由切换后的统一输出捕获。旧索引保持停止，直到统一索引 canary 完成。
+
+### 正式补索引已启动，范围尚未完成
+
+操作员回传 2026-10-12 11:01:34–11:01:51 +02:00 日志：已发生第一次 PostgreSQL flush，
+最后已写入块 54,128,714；stream 最后输出块 54,128,775；远端 stage 0 从 54,146,000
+推进到 54,160,000，运行任务数达到 5，实际 processed blocks 为 2。
+运行日志保存为 `/root/backups/rh-import-v2-backfill-to-85970291.log`。
+以上是操作员回传时的快照，不能当作实时状态或范围完成证明。stage 进度、输出事件块和
+数据库提交块分别记录；无事件范围不一定推进 SQL 游标，须最终成功结束及入库验收后再切统一包。
+
+前台日志持续输出后，操作员按 Ctrl+C 中断。随后只读检查回传旧 timer inactive/dead、
+旧 service failed 且 MainPID=0、ImportBackfillPID=none。没有同时运行的 sink。
+不执行曾提供的 nohup 启动方案；改用独立 `tiptag-import-v2-backfill.service` 后台续跑，
+输出进入 journal，范围与专用系统表保持不变，严格 hash 按已有游标恢复。
+该临时服务只负责有结束区块的历史补索引，正式统一索引仍使用既有
+`tiptag-unified-incremental.timer` / `.service`，并未替换生产调度方式。
+
+操作员随后创建临时 systemd oneshot 服务（`systemd-run --no-block`，TimeoutStartSec=12h，
+TimeoutStopSec=90s，stdout/stderr 进入 journal），并回传实际启动日志：PID 818489，
+activating/start；Production 模式，77 modules，输出 hash
+`aacb951d3546d75d6aa6da6abe764feb48f56cee`，stop exclusive=85,970,292。
+数据库恢复块为 54,360,564，block ID
+`f19c8fea7969ea4747dc81b22a87c9cb077cc2908c549676b228a90f26f29292`；
+2026-10-12 11:10:31 +02:00 的远端会话确认 resolved_start_block=54,360,565、5 worker。
+中断后按原游标续跑的门槛已通过，但整个补索引范围尚未完成，不能提前切统一包。
+上述 PID/高度为回传时快照；临时单位完成后可能被 systemd 回收，完成验收需保留 journal。
+
 发布顺序（实际操作仍拆成一个命令一轮）：
 
 1. 核对服务器 Git 状态；拉取代码，测试、构建并从精确旧包组装、审计。
@@ -115,7 +187,7 @@ API 验证、新旧 Helper、单池/混合池与注册入库测试，UI MC wire 
 server 奖励/投影/独立游标测试，以及临时 MySQL 迁移重复执行、uint256、幂等、旧状态防回退、
 失败事务回滚均已通过。详细计数与身份写入 local-validation JSON。
 
-仍须操作员完成：精确生产 SPKG 审计、Pinax 回放、PostgreSQL 迁移/入库和恢复验证、
+仍须操作员完成：真实导入/交易事件的 Pinax 验收、PostgreSQL 迁移/入库和恢复验证、
 MySQL v47、生产服务部署，以及真正的 RH V2 导入/买卖/奖励认领闭环。
 本地没有 PostgreSQL 服务，不能把单元测试描述成 PostgreSQL 集成验收。
 
