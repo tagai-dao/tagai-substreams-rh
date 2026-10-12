@@ -1,7 +1,7 @@
 specVersion: v0.1.0
 package:
   name: tiptag_substreams
-  version: v0.6.1
+  version: v0.7.0
   url: https://github.com/donut33-social/tiptag-substreams
   description: TipTag protocol indexer with the current Basket deployment for Robinhood Chain Mainnet
 
@@ -869,12 +869,42 @@ modules:
     output:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
+  # Independent, stateless imported-market domain: no legacy stores/SQL replay.
+  - name: map_import_v2_events
+    kind: map
+    initialBlock: 54128714
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: "evt_addr:0x53e65de68a0eb7f3662579f44eb9849ae5ca44ab || evt_addr:0xd0baaf8d314b0c6ab6bebd24ddbc86157c9c7b09 || evt_addr:0x70ed7c79d80dede1828a09b3c526df283111cb82"
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.V14Events
+
+  - name: import_v2_backfill_db_out
+    kind: map
+    initialBlock: 54128714
+    inputs:
+      - map: map_import_v2_events
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+  - name: import_v2_continuation_db_out
+    kind: map
+    initialBlock: 6922897
+    inputs:
+      - map: v14_continuation_db_out
+      - map: import_v2_backfill_db_out
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
 network: robinhood
 
 sink:
-  # Development template only. Production must use make_v14_continuation
+  # Development template only. Production must use make_import_v2_continuation
   # with the exact installed SPKG, then verify every preserved module hash.
-  module: v14_continuation_db_out
+  module: import_v2_continuation_db_out
   type: sf.substreams.sink.sql.v1.Service
   config:
     engine: postgres

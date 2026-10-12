@@ -2,6 +2,7 @@
 
 mod abi;
 mod v14;
+mod import_v2;
 #[allow(unused)]
 mod pb;
 use base64::encode as base64_encode;

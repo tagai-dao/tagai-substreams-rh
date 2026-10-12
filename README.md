@@ -1,3 +1,8 @@
+# RH ImportHelperV2 / v0.7.0
+
+当前新增导入域及后续发布流程见 [RH_IMPORT_HELPER_V2.md](docs/RH_IMPORT_HELPER_V2.md)。
+生产仍使用已安装 V0.6.1；v0.7.0 模板必须从精确生产 SPKG 组装并审计，不能直接替换运行。
+
 # TipTag Substreams
 
 Substreams-powered replacement for the TipTag `rh` subgraph on Robinhood Chain

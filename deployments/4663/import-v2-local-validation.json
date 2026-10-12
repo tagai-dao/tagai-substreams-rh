@@ -1,0 +1,62 @@
+{
+  "chainId": 4663,
+  "date": "2026-10-12",
+  "status": "local_validated_awaiting_server_gates",
+  "productionReady": false,
+  "baseCommit": "8bf6de312c067353404280de862f995738716ca3",
+  "template": {
+    "version": "v0.7.0",
+    "file": "tiptag-substreams-v0.7.0.spkg",
+    "sha256": "27a058bc2c10e0aa83f1d208afcd3edf181d8582e5019d0ca1440e2384c00938",
+    "moduleHashes": {
+      "map_import_v2_events": "88a5a6824978b35a3bbb0b9f52432701142e67fd",
+      "import_v2_backfill_db_out": "4990321c5026b33c880da48e9e521fc3ae49b507",
+      "import_v2_continuation_db_out": "1cb3d0b245c0a377443f08a1e025c91e8c828879"
+    },
+    "scope": "Development template. Reassemble on server from exact installed production SPKG."
+  },
+  "localCompatibility": {
+    "scope": "Historical local V0.6.1 development template only, not exact production artifact",
+    "shared": 74,
+    "unchanged": 74,
+    "changed": 0,
+    "added": 3
+  },
+  "tests": {
+    "rustLibrary": 47,
+    "assemblerBoundaries": 2,
+    "api": 49,
+    "serverRegression": 38,
+    "serverImportProjection": 5,
+    "isolatedMysql": 1,
+    "uiWire": 4,
+    "uiTypecheck": "passed",
+    "uiBuild": "passed",
+    "serverGraphKeeperTypecheck": "passed",
+    "serverTradeCurationTypecheck": "passed"
+  },
+  "operatorConfirmedProduction": {
+    "package": "/opt/tiptag-substreams/tiptag-v14-continuation-v0.6.1.spkg",
+    "sha256": "1af895c7b2f27f3bb978c1688f688ac1d1560fe104b200ef841b08cc4c8c3c14",
+    "outputHash": "17a9486293f4cf6aaeb1b2e02724bae301332352",
+    "cursorsTable": "unified_v14_cursors",
+    "historyTable": "unified_v14_substreams_history",
+    "checkpoint": 85970291,
+    "blockId": "6252c4a1dacfed0a2dc0a065665a66d288d41227e4384ba0e6877380ef797091",
+    "scope": "Reported live state; re-read final stopped C at cutover."
+  },
+  "wrapperRuntime": {
+    "verifiedBlock": 86506723,
+    "canonicalTradeTopic": "0x3ac8050d8373cc2b823bb4e20856a01114899981a862c07ae33f7313c64ed929",
+    "topicPresent": true,
+    "byteLength": 19421,
+    "ownershipAcceptancePending": true
+  },
+  "remaining": [
+    "Exact server SPKG assembly/audit and release hashes",
+    "Pinax bounded business probes and PostgreSQL migration/replay/restart/reorg acceptance",
+    "MySQL v47 operator execution",
+    "Production server/API/UI deployment",
+    "Real RH V2 import/buy/sell/reward claim acceptance"
+  ]
+}

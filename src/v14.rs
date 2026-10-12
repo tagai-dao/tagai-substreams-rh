@@ -26,16 +26,16 @@ const LIQUIDITY_ABI: &str = include_str!("../abi/v14/TagAILiquidityRouter.json")
 
 type Event14 = contract::V14Event;
 type Events14 = contract::V14Events;
-fn abi(source: &str) -> Contract {
+pub(super) fn abi(source: &str) -> Contract {
     Contract::load(source.as_bytes()).expect("reviewed event ABI")
 }
-fn payload(e: &Event14) -> Value {
+pub(super) fn payload(e: &Event14) -> Value {
     serde_json::from_str(&e.payload).expect("decoded V14 payload")
 }
-fn string<'a>(p: &'a Value, key: &str) -> &'a str {
+pub(super) fn string<'a>(p: &'a Value, key: &str) -> &'a str {
     p[key].as_str().unwrap_or("")
 }
-fn number(p: &Value, key: &str) -> BigInt {
+pub(super) fn number(p: &Value, key: &str) -> BigInt {
     parse_bigint(p[key].as_str().unwrap_or("0"))
 }
 fn integer(p: &Value, key: &str) -> i64 {
@@ -45,7 +45,7 @@ fn integer(p: &Value, key: &str) -> i64 {
         .parse()
         .expect("bounded ABI integer")
 }
-fn flag(p: &Value, key: &str) -> bool {
+pub(super) fn flag(p: &Value, key: &str) -> bool {
     p[key].as_bool().unwrap_or(false)
 }
 #[cfg(test)]
@@ -69,7 +69,7 @@ fn token_json(t: Token) -> Value {
         }
     }
 }
-fn decode(contract: &Contract, log: &eth::Log) -> Option<(String, Value)> {
+pub(super) fn decode(contract: &Contract, log: &eth::Log) -> Option<(String, Value)> {
     let topic = log.topics.first()?;
     let event = contract
         .events()
@@ -97,7 +97,7 @@ fn decode(contract: &Contract, log: &eth::Log) -> Option<(String, Value)> {
     }
     Some((event.name.clone(), Value::Object(p)))
 }
-fn envelope(
+pub(super) fn envelope(
     blk: &eth::Block,
     tx: &eth::TransactionTrace,
     log: &eth::Log,
@@ -117,7 +117,7 @@ fn envelope(
         transaction_from: prefixed_hex(&tx.from),
     }
 }
-fn normalize(mut events: Vec<Event14>) -> Vec<Event14> {
+pub(super) fn normalize(mut events: Vec<Event14>) -> Vec<Event14> {
     events.sort_by_key(|e| (e.ordinal, e.log_index));
     let mut seen = BTreeSet::new();
     events.retain(|e| seen.insert((e.transaction_hash.clone(), e.log_index)));

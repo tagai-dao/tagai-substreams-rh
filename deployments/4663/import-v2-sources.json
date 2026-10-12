@@ -1,0 +1,24 @@
+{
+  "chainId": 4663,
+  "evidence": "Independent RH public RPC successful deployment receipts and canonical blocks, 2026-10-12",
+  "sources": [
+    {
+      "address": "0x53e65de68a0eb7f3662579f44eb9849ae5ca44ab",
+      "transactionHash": "0xeb081817ec361d2e03e0d167f97826f421af381fbbde0741a85bfc23d1aa922a",
+      "blockNumber": 54128714,
+      "blockHash": "0xa4dcd757ffabf07685606a6221542326abf4cbb929589c61e06ee5bcbb81e9c0"
+    },
+    {
+      "address": "0xd0baaf8d314b0c6ab6bebd24ddbc86157c9c7b09",
+      "transactionHash": "0x7cc6e2842247ac77a6b840a7bee3e33d1f06bd42609b5bb2a5e97ffdac847bda",
+      "blockNumber": 54128745,
+      "blockHash": "0x54c2fc221b67938d4fb09b8a08f253eff453ecddb16ad3d8ee0fbab99da56dc7"
+    },
+    {
+      "address": "0x70ed7c79d80dede1828a09b3c526df283111cb82",
+      "transactionHash": "0xc81cbd3a01a156a3697322fc64878f717597bd8de364f0f3533098023e0a44b0",
+      "blockNumber": 86448655,
+      "blockHash": "0x7eb3c3c9e70fc05cb76088d7793cc08395659a484a2f2fae4ee6dfbd46a188ca"
+    }
+  ]
+}

@@ -1027,3 +1027,13 @@ database commits. V14 SQL projections remain pending; deployment is not proof of
 or V14 product acceptance. Before rollback, use the stopped database/config
 backup recorded in the JSON and review downstream state; do not simply resume
 the old cursor over writes already committed by the new sink.
+
+
+## 15. ImportHelperV2 development (2026-10-12)
+
+New address-scoped/stateless domain and operator-confirmed V0.6.1 package/checkpoint are recorded
+in [RH_IMPORT_HELPER_V2.md](RH_IMPORT_HELPER_V2.md). Current reported SQL checkpoint is 85,970,291;
+new Helper deployment is 86,448,655, but the currently deployed Wrapper was not in the preserved
+V11 address set and starts at 54,128,714. Isolate its historical backfill in three new tables,
+retain all 74 old module hashes, and use an actual recorded C for unified continuation.
+The local candidate is not deployed. Re-read server state before cutover.
