@@ -1,7 +1,8 @@
 # RH ImportHelperV2 索引与发布记录
 
 2026-10-12：本地实现已完成；操作员已通过服务器构建、精确旧包兼容审计和两个部署块的 Pinax 只读回放。
-PostgreSQL 迁移及停稳备份已完成，独立域历史补索引已正式启动；范围完成、统一索引切换、续跑和产品验收仍待操作员逐步执行。
+PostgreSQL 迁移及停稳备份已完成，2026-10-14 操作员确认独立域历史补索引范围已正常完成；
+补索引入库验收、统一索引切换、续跑和产品验收仍待操作员逐步执行。
 本文件接续 `SUBSTREAMS_AGENT_RUNBOOK.md`、`RH_V11_COMPATIBILITY.md` 和 `RH_V14_HANDOFF.md`。
 开发期间保持生产索引运行；服务器一次给一个命令，收到真实结果后再给下一步。
 
@@ -139,6 +140,42 @@ activating/start；Production 模式，77 modules，输出 hash
 2026-10-12 11:10:31 +02:00 的远端会话确认 resolved_start_block=54,360,565、5 worker。
 中断后按原游标续跑的门槛已通过，但整个补索引范围尚未完成，不能提前切统一包。
 上述 PID/高度为回传时快照；临时单位完成后可能被 systemd 回收，完成验收需保留 journal。
+
+### 历史补索引范围完成（2026-10-14 操作员确认）
+
+journal 的结束时间为 2026-10-12 18:07:34 +02:00（北京时间 2026-10-13 00:07:34）。
+日志明确记录 reached your stop block、run terminated gracefully、Deactivated successfully 和 Finished；
+Finished 行仍确认原命令 stop exclusive=85,970,292。最后 stage 0=85,970,000，运行任务为 0；
+恢复后的这次 stream 有 931 个 processed blocks / data messages，不当作中断前后合计计费量。
+最后事件块为 85,061,723，block ID
+`9132e5e32350c9ca44eb42261e9ea4ca19aa8f1f3af290a1f0389552e723516c`；
+这是稀疏输出的最后事件高度，不能据此把已完成范围判为缺块，也不能修改该 SQL 游标到 stop。
+操作员当前读取临时单位 LoadState=not-found、MainPID=0、inactive/dead，是完成后回收的正常表现。
+接下来先检查数据库事件/市场/成交、payload 对齐和旧游标，再安装并切换已验收统一包；
+目前没有证据表明新统一索引、MySQL v47 或应用侧新导入功能已上线。
+
+操作员随后回传补索引入库检查：3 张表均有主键；共 2,862 条 raw 事件、987 个市场、
+3 条成交且唯一成交数为 3；脚本的成交 payload 对齐异常查询为空。
+backfill 游标为 85,061,723，与最后事件一致；旧 unified_v14 游标仍为 C=85,970,291，
+block ID 不变；新 unified_import_v2 游标表尚无行。新 Helper 部署事件为 0，符合范围边界。
+该检查确认新域行及旧游标；不是对所有旧业务表与停稳备份的完整指纹比较，后者仍待验证。
+下一步将服务器 SHA-256 已确认的 continuation 包安装到 `/opt/tiptag-substreams`，
+配置 C+1 的统一索引 canary。不得通过改写 backfill 的稀疏游标代替切换边界。
+
+操作员确认统一包已校验并安装到 `/opt/tiptag-substreams/tiptag-import-v2-continuation-v0.7.0.spkg`。
+继续正式接续时采用既有基础窗口 300,000、上限 8,000,000，不再另设固定 1,000 块的小窗口。
+以首次有界正式运行、真实输出 checkpoint 和严格 hash 续跑作切换验收；当前先准备配置，
+尚未启动统一服务。来源 hash/table 和 C+1 仍以本次已确认身份为准，不复制旧 opaque cursor。
+
+操作员已回传生效配置：新 continuation 包、START_BLOCK=85,970,292、STOP_BLOCK 为空、
+hash policy=error、unified_import_v2 专用 cursor/history 表、实际输出 hash=d971756…f48164、
+基础窗口 300,000 / 上限 8,000,000，全部匹配。旧定时器仍保持停止。
+启动前使用 `scripts/audit-import-v2-legacy-isolation.py` 比较停稳备份与当前 public 旧表的 COPY
+数据指纹（含列列表和重复行、忽略物理行顺序，排除本次 import_v2/unified_import_v2 表）。
+`pg_restore --data-only --file=-` 仅输出 SQL 到内存，不连接或恢复到数据库；当前数据由只读
+pg_dump 取得。脚本检查旧 sink/timer 停止状态，表缺失或变化即失败；不输出业务行值或凭据。
+本次备份路径固定在脚本中，后续发布需重新确认边界及排除范围，不可照搬。
+该核验不比较 DDL、索引或序列状态；迁移本身只新增独立表，旧模块兼容性另以 SPKG 审计证明。
 
 发布顺序（实际操作仍拆成一个命令一轮）：
 

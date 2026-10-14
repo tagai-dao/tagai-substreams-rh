@@ -1,6 +1,6 @@
 {
   "chainId": 4663,
-  "status": "isolated_backfill_running_under_systemd_unified_cutover_pending",
+  "status": "isolated_backfill_rows_validated_unified_cutover_pending",
   "productionReady": false,
   "sourceImplementationCommit": "6a046af",
   "serverGitCommitConfirmed": false,
@@ -16,7 +16,9 @@
     "sha256": "7dba55e72ca23cc524d8085636a94a087c5f6f632c6e04b1c257d221f537b125",
     "outputModule": "import_v2_continuation_db_out",
     "initialBlock": 53869281,
-    "outputModuleHash": "d971756177525a8da560588154366400a9f48164"
+    "outputModuleHash": "d971756177525a8da560588154366400a9f48164",
+    "installedRuntimePath": "/opt/tiptag-substreams/tiptag-import-v2-continuation-v0.7.0.spkg",
+    "operatorConfirmedInstallation": true
   },
   "backfill": {
     "file": "tiptag-import-v2-backfill-v0.7.0.spkg",
@@ -108,7 +110,40 @@
       "maxParallelWorkers": 5,
       "sessionTimestamp": "2026-10-12T11:10:31.445154982+02:00"
     },
-    "rangeCompleted": false
+    "rangeCompleted": true,
+    "completionProof": {
+      "timestamp": "2026-10-12T18:07:34.863777124+02:00",
+      "reportedDate": "2026-10-14",
+      "message": "substreams ended correctly, reached your stop block",
+      "stopBlockExclusive": 85970292,
+      "lastEventBlock": 85061723,
+      "lastEventBlockId": "9132e5e32350c9ca44eb42261e9ea4ca19aa8f1f3af290a1f0389552e723516c",
+      "lastStage0Block": 85970000,
+      "runningJobsAtCompletion": 0,
+      "resumedStreamProcessedBlocks": 931,
+      "resumedStreamDataMessages": 931,
+      "gracefulTerminationReported": true,
+      "systemdDeactivatedSuccessfully": true,
+      "unitLoadStateAtLaterCheck": "not-found",
+      "mainPidAtLaterCheck": 0,
+      "postgresPostBackfillValidationCompleted": true
+    }
+  },
+  "postBackfillDatabaseCheck": {
+    "tablesWithPrimaryKey": 3,
+    "events": 2862,
+    "markets": 987,
+    "trades": 3,
+    "uniqueTrades": 3,
+    "tradePayloadMismatchRows": 0,
+    "newHelperDeploymentEvents": 0,
+    "backfillCheckpointBlock": 85061723,
+    "backfillCheckpointBlockId": "9132e5e32350c9ca44eb42261e9ea4ca19aa8f1f3af290a1f0389552e723516c",
+    "oldCheckpointBlock": 85970291,
+    "oldCheckpointBlockId": "6252c4a1dacfed0a2dc0a065665a66d288d41227e4384ba0e6877380ef797091",
+    "oldCheckpointUnchanged": true,
+    "unifiedCursorRows": 0,
+    "legacyBusinessFingerprintCompared": false
   },
   "continuationSystemTables": {
     "cursors": "unified_import_v2_cursors",
@@ -116,6 +151,14 @@
     "operatorReportedSetupCompleted": true,
     "moduleHashMismatchPolicy": "error",
     "continuationStarted": false
+  },
+  "plannedUnifiedRuntime": {
+    "startBlock": 85970292,
+    "baseWindowBlocks": 300000,
+    "ceilingWindowBlocks": 8000000,
+    "hashMismatchPolicy": "error",
+    "configurationApplied": true,
+    "firstBoundedRunValidated": false
   },
   "preMigrationBackup": {
     "path": "/root/backups/tiptag-rh-before-import-v2-20261012T084934Z.dump",
@@ -150,8 +193,8 @@
   ],
   "remainingGates": [
     "server Git commit and toolchain version recording",
-    "PostgreSQL isolated backfill and row validation",
-    "final stopped cutover boundary, unified canary and restart/resume",
+    "legacy business fingerprint comparison against the stopped backup",
+    "unified cutover, canary and restart/resume",
     "MySQL v47 migration and downstream service rollout",
     "real import, buy/sell, reward and claim acceptance"
   ]
